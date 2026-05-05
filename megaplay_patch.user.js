@@ -145,6 +145,10 @@
         GM_xmlhttpRequest({
             method: "GET",
             url: vttUrl,
+            headers: {
+                "Referer": "https://megaplay.buzz/",
+                "Origin": "https://megaplay.buzz"
+            },
             onload: function (response) {
                 try {
                     if (response.status !== 200) {
