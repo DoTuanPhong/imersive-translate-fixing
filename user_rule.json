@@ -1,0 +1,11 @@
+[
+  {
+    "matches": "*://megaplay.buzz/stream/*",
+    "isIframe": true,
+    "selectors": {
+      "wrapperSelector": ".jwplayer, #player, .video-content",
+      "excludeSelectors": [".jw-controls", ".jw-display-icon-container"]
+    },
+    "injectCss": ".immersive-translate-target-wrapper { z-index: 2147483647 !important; visibility: visible !important; display: block !important; } .immersive-translate-icon-v2 { opacity: 1 !important; }"
+  }
+]

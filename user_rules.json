@@ -1,0 +1,7 @@
+[
+  {
+    "matches": ["megaplay.buzz", "1anime.site"],
+    "selectors": [".jw-captions", ".jw-wrapper", ".jw-text-track-container", ".jw-captions-display"],
+    "injectBy": "text"
+  }
+]
