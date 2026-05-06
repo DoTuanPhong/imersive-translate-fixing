@@ -1,43 +1,47 @@
 [
   {
     "id": "youtube",
-    "isNativeVideo": true,
-    "videoSelector": "video",
-    "autoEnabledBilingualSubtitles": true,
-    "selectors.add": {
-      "videoIconSelector": ".ytp-right-controls",
-      "controlsSelector": ".ytp-chrome-bottom"
-    },
     "quickButtonRule.add": {
       "appendSelector": ".ytp-right-controls",
       "insertBeforeSelector": ".ytp-right-controls-left"
     }
   },
   {
-    "id": "hianime",
+    "id": "anisuge_custom_v4",
     "matches": [
+      "anisuge.tv",
       "megaplay.buzz",
       "kwik.cx",
       "kwik.si",
       "kwik.sh",
-      "anisuge.tv",
       "vidstream.pro",
       "1anime.site",
       "hianime.to"
     ],
     "isNativeVideo": true,
     "videoSelector": "video",
+    "mainFrameSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content, #megaplay-player",
+    "subtitlesContainer": ".art-subtitles, .art-subtitle, .jw-captions, .jw-subtitles-text, .jw-text-track-container",
     "injectBy": "track",
     "autoEnabledBilingualSubtitles": true,
-    "selectors": {
-      "wrapperSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content",
-      "videoIconSelector": ".jw-controlbar-right-group, .art-controls-right, .jw-controls-right, .plyr__controls",
-      "controlsSelector": ".jw-controlbar, .art-controls, .jw-controls, .plyr__controls",
-      "subtitlesContainer": ".jw-captions, .art-subtitles, .jw-subtitles, .plyr__captions, .jw-text-track-container"
-    },
     "quickButtonRule": {
-      "appendSelector": ".jw-controlbar-right-group, .art-controls-right, .jw-controls-right, .plyr__controls",
-      "insertBeforeSelector": ".jw-icon-fullscreen, .jw-icon-settings, .art-control-setting, .art-control-fullscreen"
-    }
+      "appendSelector": ".art-controls-right, .jw-controlbar-right-group",
+      "insertBeforeSelector": ".art-control-setting, .jw-icon-fullscreen, .jw-icon-settings"
+    },
+    "sourceLanguageUrlPattern": {
+      "en": {
+        "matches": [
+          "anisuge.tv",
+          "megaplay.buzz",
+          "kwik.cx",
+          "vidstream.pro"
+        ]
+      }
+    },
+    "additionalInjectedCss": [
+      ".immersive-translate-quick-button-container { display: inline-flex !important; opacity: 1 !important; visibility: visible !important; filter: brightness(0) invert(1) !important; z-index: 2147483647 !important; }",
+      ".art-controls-right .immersive-translate-quick-button-container, .jw-controlbar-right-group .immersive-translate-quick-button-container { float: left !important; width: 24px !important; height: 24px !important; margin: 0 6px !important; }",
+      ".immersive-translate-quick-button-container img { width: 24px !important; height: 24px !important; object-fit: contain !important; }"
+    ]
   }
 ]

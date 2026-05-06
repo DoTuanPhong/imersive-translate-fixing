@@ -8,27 +8,33 @@ Vào **Thiết lập nhà phát triển** -> **Sửa quy tắc người dùng (J
 ```json
 [
   {
-    "matches": ["www.youtube.com"],
-    "isNativeVideo": true,
-    "videoSelector": "video",
-    "injectBy": "track",
-    "selectors": {
-      "videoIconSelector": ".ytp-right-controls",
-      "controlsSelector": ".ytp-chrome-bottom"
+    "id": "youtube",
+    "quickButtonRule.add": {
+      "appendSelector": ".ytp-right-controls",
+      "insertBeforeSelector": ".ytp-right-controls-left"
     }
   },
   {
-    "matches": ["megaplay.buzz", "1anime.site", "anisuge.tv", "vidstream.pro"],
+    "id": "anisuge_custom_v4",
+    "matches": ["anisuge.tv", "megaplay.buzz", "kwik.cx", "kwik.si", "kwik.sh", "vidstream.pro", "1anime.site", "hianime.to"],
     "isNativeVideo": true,
     "videoSelector": "video",
+    "mainFrameSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content, #megaplay-player",
+    "subtitlesContainer": ".art-subtitles, .art-subtitle, .jw-captions, .jw-subtitles-text, .jw-text-track-container",
     "injectBy": "track",
     "autoEnabledBilingualSubtitles": true,
-    "selectors": {
-      "wrapperSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content",
-      "excludeSelectors": [".art-controls", ".jw-controls"],
-      "videoIconSelector": ".art-controls-right, .jw-controls-right",
-      "controlsSelector": ".art-controls, .jw-controls"
-    }
+    "quickButtonRule": {
+      "appendSelector": ".art-controls-right, .jw-controlbar-right-group",
+      "insertBeforeSelector": ".art-control-setting, .jw-icon-fullscreen, .jw-icon-settings"
+    },
+    "sourceLanguageUrlPattern": {
+      "en": { "matches": ["anisuge.tv", "megaplay.buzz", "kwik.cx", "vidstream.pro"] }
+    },
+    "additionalInjectedCss": [
+      ".immersive-translate-quick-button-container { display: inline-flex !important; opacity: 1 !important; visibility: visible !important; filter: brightness(0) invert(1) !important; z-index: 2147483647 !important; }",
+      ".art-controls-right .immersive-translate-quick-button-container, .jw-controlbar-right-group .immersive-translate-quick-button-container { float: left !important; width: 24px !important; height: 24px !important; margin: 0 6px !important; }",
+      ".immersive-translate-quick-button-container img { width: 24px !important; height: 24px !important; object-fit: contain !important; }"
+    ]
   }
 ]
 ```
