@@ -1,11 +1,33 @@
 [
   {
-    "matches": "*://megaplay.buzz/stream/*",
-    "isIframe": true,
+    "id": "youtube",
+    "matches": [
+      "www.youtube.com"
+    ],
+    "isNativeVideo": true,
+    "videoSelector": "video",
+    "autoEnabledBilingualSubtitles": true,
     "selectors": {
-      "wrapperSelector": ".jwplayer, #player, .video-content",
-      "excludeSelectors": [".jw-controls", ".jw-display-icon-container"]
+      "videoIconSelector": ".ytp-right-controls",
+      "controlsSelector": ".ytp-chrome-bottom"
     },
-    "injectCss": ".immersive-translate-target-wrapper { z-index: 2147483647 !important; visibility: visible !important; display: block !important; } .immersive-translate-icon-v2 { opacity: 1 !important; }"
+    "quickButtonRule": {
+      "appendSelector": ".ytp-right-controls",
+      "insertBeforeSelector": ".ytp-right-controls-left"
+    }
+  },
+  {
+    "id": "hianime",
+    "matches": ["megaplay.buzz", "1anime.site", "anisuge.tv", "vidstream.pro"],
+    "isNativeVideo": true,
+    "videoSelector": "video",
+    "injectBy": "track",
+    "autoEnabledBilingualSubtitles": true,
+    "selectors": {
+      "wrapperSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content",
+      "excludeSelectors": [".art-controls", ".jw-controls"],
+      "videoIconSelector": ".art-controls-right, .jw-controls-right",
+      "controlsSelector": ".art-controls, .jw-controls"
+    }
   }
 ]

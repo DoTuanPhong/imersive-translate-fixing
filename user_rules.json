@@ -1,7 +1,33 @@
 [
   {
-    "matches": ["megaplay.buzz", "1anime.site"],
-    "selectors": [".jw-captions", ".jw-wrapper", ".jw-text-track-container", ".jw-captions-display"],
-    "injectBy": "text"
+    "id": "youtube",
+    "matches": [
+      "www.youtube.com"
+    ],
+    "isNativeVideo": true,
+    "videoSelector": "video",
+    "autoEnabledBilingualSubtitles": true,
+    "selectors": {
+      "videoIconSelector": ".ytp-right-controls",
+      "controlsSelector": ".ytp-chrome-bottom"
+    },
+    "quickButtonRule": {
+      "appendSelector": ".ytp-right-controls",
+      "insertBeforeSelector": ".ytp-right-controls-left"
+    }
+  },
+  {
+    "id": "hianime",
+    "matches": ["megaplay.buzz", "1anime.site", "anisuge.tv", "vidstream.pro"],
+    "isNativeVideo": true,
+    "videoSelector": "video",
+    "injectBy": "track",
+    "autoEnabledBilingualSubtitles": true,
+    "selectors": {
+      "wrapperSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content",
+      "excludeSelectors": [".art-controls", ".jw-controls"],
+      "videoIconSelector": ".art-controls-right, .jw-controls-right",
+      "controlsSelector": ".art-controls, .jw-controls"
+    }
   }
 ]

@@ -135,7 +135,7 @@
             return;
         }
 
-        if (video.querySelector('track[label="IT-Patch"]')) return;
+        if (video.querySelector('track[data-it-patch="true"]')) return;
 
         log(`Attempting to inject track into video (CrossOrigin: ${video.crossOrigin || 'none'})`);
 
@@ -159,20 +159,31 @@
                     const blob = new Blob([response.responseText], { type: 'text/vtt' });
                     const track = document.createElement('track');
                     track.kind = 'subtitles';
-                    track.label = 'IT-Patch';
+                    track.label = 'English';
                     track.srclang = 'en';
                     track.src = URL.createObjectURL(blob);
                     track.default = true;
+                    
+                    // Add attributes to help Immersive Translate identify the track
+                    track.setAttribute('data-it-patch', 'true');
+                    track.setAttribute('data-it-origin', 'true'); // Some versions use this
+                    track.id = 'it-injected-track';
 
                     // Remove existing ones just in case
-                    video.querySelectorAll('track[label="IT-Patch"]').forEach(t => t.remove());
+                    video.querySelectorAll('track[data-it-patch="true"], track#it-injected-track').forEach(t => t.remove());
 
                     video.appendChild(track);
                     log('SUCCESS: Track injected successfully!');
 
                     // Force browser to recognize the new track
                     track.mode = 'showing';
-                    video.textTracks[video.textTracks.length - 1].mode = 'showing';
+                    if (video.textTracks && video.textTracks.length > 0) {
+                        video.textTracks[video.textTracks.length - 1].mode = 'showing';
+                    }
+                    
+                    // Dispatch an event that some extensions listen for
+                    video.dispatchEvent(new Event('load'));
+                    video.dispatchEvent(new Event('loadedmetadata'));
                 } catch (e) {
                     log(`Injection Error: ${e.message}`);
                 }
