@@ -4,8 +4,9 @@
 // @version      2.1
 // @description  Aggressive anti-debug bypass and VTT injection for Immersive Translate
 // @author       Antigravity
-// @match        *://megaplay.buzz/stream/*
-// @match        *://1anime.site/megaplay/*
+// @match        *://anisuge.tv/*
+// @match        *://megaplay.buzz/*
+// @match        *://1anime.site/*
 // @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
 // @run-at       document-start
@@ -175,15 +176,12 @@
                     video.appendChild(track);
                     log('SUCCESS: Track injected successfully!');
 
-                    // Force browser to recognize the new track
-                    track.mode = 'showing';
-                    if (video.textTracks && video.textTracks.length > 0) {
-                        video.textTracks[video.textTracks.length - 1].mode = 'showing';
-                    }
-                    
-                    // Dispatch an event that some extensions listen for
+                    // Dispatch events to wake up extensions
                     video.dispatchEvent(new Event('load'));
                     video.dispatchEvent(new Event('loadedmetadata'));
+                    video.dispatchEvent(new Event('canplay'));
+                    
+                    log('SUCCESS: Track injected and events dispatched!');
                 } catch (e) {
                     log(`Injection Error: ${e.message}`);
                 }

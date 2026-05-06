@@ -1,33 +1,43 @@
 [
   {
     "id": "youtube",
-    "matches": [
-      "www.youtube.com"
-    ],
     "isNativeVideo": true,
     "videoSelector": "video",
     "autoEnabledBilingualSubtitles": true,
-    "selectors": {
+    "selectors.add": {
       "videoIconSelector": ".ytp-right-controls",
       "controlsSelector": ".ytp-chrome-bottom"
     },
-    "quickButtonRule": {
+    "quickButtonRule.add": {
       "appendSelector": ".ytp-right-controls",
       "insertBeforeSelector": ".ytp-right-controls-left"
     }
   },
   {
     "id": "hianime",
-    "matches": ["megaplay.buzz", "1anime.site", "anisuge.tv", "vidstream.pro"],
+    "matches": [
+      "megaplay.buzz",
+      "kwik.cx",
+      "kwik.si",
+      "kwik.sh",
+      "anisuge.tv",
+      "vidstream.pro",
+      "1anime.site",
+      "hianime.to"
+    ],
     "isNativeVideo": true,
     "videoSelector": "video",
     "injectBy": "track",
     "autoEnabledBilingualSubtitles": true,
     "selectors": {
       "wrapperSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content",
-      "excludeSelectors": [".art-controls", ".jw-controls"],
-      "videoIconSelector": ".art-controls-right, .jw-controls-right",
-      "controlsSelector": ".art-controls, .jw-controls"
+      "videoIconSelector": ".jw-controlbar-right-group, .art-controls-right, .jw-controls-right, .plyr__controls",
+      "controlsSelector": ".jw-controlbar, .art-controls, .jw-controls, .plyr__controls",
+      "subtitlesContainer": ".jw-captions, .art-subtitles, .jw-subtitles, .plyr__captions, .jw-text-track-container"
+    },
+    "quickButtonRule": {
+      "appendSelector": ".jw-controlbar-right-group, .art-controls-right, .jw-controls-right, .plyr__controls",
+      "insertBeforeSelector": ".jw-icon-fullscreen, .jw-icon-settings, .art-control-setting, .art-control-fullscreen"
     }
   }
 ]
