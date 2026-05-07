@@ -20,13 +20,13 @@
     ],
     "isNativeVideo": true,
     "videoSelector": "video",
-    "mainFrameSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content, #megaplay-player",
-    "subtitlesContainer": ".art-subtitles, .art-subtitle, .jw-captions, .jw-subtitles-text, .jw-text-track-container",
+    "mainFrameSelector": ".artplayer-app, .jwplayer",
+    "subtitlesContainer": ".jw-captions, .jw-subtitles-text, .art-subtitle, .art-subtitles",
     "injectBy": "track",
     "autoEnabledBilingualSubtitles": true,
     "quickButtonRule": {
       "appendSelector": ".art-controls-right, .jw-controlbar-right-group",
-      "insertBeforeSelector": ".art-control-setting, .jw-icon-fullscreen, .jw-icon-settings"
+      "insertBeforeSelector": ".art-control-setting, .jw-icon-fullscreen"
     },
     "sourceLanguageUrlPattern": {
       "en": {

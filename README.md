@@ -19,13 +19,13 @@ Vào **Thiết lập nhà phát triển** -> **Sửa quy tắc người dùng (J
     "matches": ["anisuge.tv", "megaplay.buzz", "kwik.cx", "kwik.si", "kwik.sh", "vidstream.pro", "1anime.site", "hianime.to"],
     "isNativeVideo": true,
     "videoSelector": "video",
-    "mainFrameSelector": ".artplayer-app, .jwplayer, .jw-wrapper, #player, .video-content, #megaplay-player",
-    "subtitlesContainer": ".art-subtitles, .art-subtitle, .jw-captions, .jw-subtitles-text, .jw-text-track-container",
-    "injectBy": "track",
+    "mainFrameSelector": ".artplayer-app, .jwplayer",
+    "subtitlesContainer": ".art-subtitle, .art-subtitles, .jw-captions, .jw-subtitles-text",
+    "injectBy": "auto",
     "autoEnabledBilingualSubtitles": true,
     "quickButtonRule": {
       "appendSelector": ".art-controls-right, .jw-controlbar-right-group",
-      "insertBeforeSelector": ".art-control-setting, .jw-icon-fullscreen, .jw-icon-settings"
+      "insertBeforeSelector": ".art-control-setting, .jw-icon-fullscreen"
     },
     "sourceLanguageUrlPattern": {
       "en": { "matches": ["anisuge.tv", "megaplay.buzz", "kwik.cx", "vidstream.pro"] }
