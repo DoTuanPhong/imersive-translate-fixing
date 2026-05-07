@@ -65,27 +65,30 @@
     let vttContent = null;
 
     const findVtt = () => {
+        // Priority 1: ArtPlayer
         const art = unsafeWindow.artplayer || (unsafeWindow.art && unsafeWindow.art.instances && unsafeWindow.art.instances[0]);
         if (art && art.option && art.option.subtitle && art.option.subtitle.url && art.option.subtitle.url.includes('.vtt')) {
             vttUrl = art.option.subtitle.url;
             log(`VTT from ArtPlayer: ${vttUrl}`);
             return;
         }
+        // Priority 2: JWPlayer
         const jw = unsafeWindow.jwplayer || window.jwplayer;
         if (typeof jw === 'function') {
             try {
                 const inst = jw();
                 if (inst && inst.getPlaylist && inst.getPlaylist()[0] && inst.getPlaylist()[0].tracks) {
                     inst.getPlaylist()[0].tracks.forEach(t => { if (t.file && t.file.includes('.vtt')) vttUrl = t.file; });
-                    if (vttUrl) log(`VTT from JW: ${vttUrl}`);
+                    if (vttUrl) { log(`VTT from JW: ${vttUrl}`); return; }
                 }
             } catch (e) { }
         }
+        // Priority 3: window property scan (only if vttUrl is null — don't overwrite fresh XHR URL)
         if (!vttUrl) {
             for (let key in unsafeWindow) {
                 try {
                     const val = unsafeWindow[key];
-                    if (typeof val === 'string' && val.includes('.vtt') && val.startsWith('http')) { vttUrl = val; log(`VTT from ${key}: ${vttUrl}`); }
+                    if (typeof val === 'string' && val.includes('.vtt') && val.startsWith('http')) { vttUrl = val; log(`VTT from ${key}: ${vttUrl}`); break; }
                 } catch (e) { }
             }
         }
@@ -96,6 +99,9 @@
         if (typeof url === 'string' && url.includes('.vtt')) { vttUrl = url; log(`VTT via XHR: ${vttUrl}`); }
         return origOpen.apply(this, arguments);
     };
+
+    // Run findVtt immediately in case the VTT URL was already captured (page loaded faster than interval)
+    findVtt();
 
     // --- 3. Parse VTT and inject cues directly ---
     function parseVTT(text) {
@@ -142,22 +148,36 @@
             video.dataset.immersiveTranslateVideoId = 'anisuge-' + Date.now();
         }
 
-        // Already injected
+        // Already injected — but check if VTT URL changed (different episode)
+        if (video.dataset.itPatched && video.dataset.itVttUrl && video.dataset.itVttUrl !== vttUrl) {
+            log(`VTT URL changed (${video.dataset.itVttUrl} → ${vttUrl}), re-injecting`);
+            video.querySelectorAll('track[data-it-patch="true"]').forEach(t => t.remove());
+            delete video.dataset.itPatched;
+        }
+
         if (video.querySelector('track[data-it-patch="true"]')) {
-            // Just verify tracks have cues
             const tracks = video.querySelectorAll('track[data-it-patch="true"]');
             let needRefresh = false;
             tracks.forEach(t => {
                 if (!t.track || !t.track.cues || t.track.cues.length === 0) needRefresh = true;
             });
             if (!needRefresh) {
-                // Still poke periodically
+                // Still poke to trigger extension detection
+                const poke = () => {
+                    const events = ['loadedmetadata', 'loadeddata', 'canplay', 'play', 'timeupdate', 'seeked'];
+                    events.forEach(ev => video.dispatchEvent(new Event(ev, { bubbles: true })));
+                    window.dispatchEvent(new CustomEvent('immersive-translate-re-scan-subtitles', { bubbles: true }));
+                };
+                poke();
                 return;
             }
-            // If cues missing, re-inject
+            // Cues missing or empty — remove old tracks and force re-inject
             tracks.forEach(t => t.remove());
+            delete video.dataset.itPatched;
+            delete video.dataset.itVttUrl;
         }
 
+        video.dataset.itVttUrl = vttUrl;
         log(`Injecting tracks from: ${vttUrl}`);
 
         if (video.crossOrigin !== 'anonymous') video.crossOrigin = 'anonymous';
@@ -191,7 +211,9 @@
 
                         // KEY FIX: Use data URI instead of blob URL
                         // Data URIs are accessible across JS contexts (unlike blob URLs)
-                        track.src = 'data:text/vtt;base64,' + btoa(vttContent);
+                        // UTF-8 safe base64 encode (btoa fails on non-Latin1 characters)
+                        const utf8Base64 = (str) => btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+                        track.src = 'data:text/vtt;charset=utf-8;base64,' + utf8Base64(vttContent);
 
                         video.appendChild(track);
 

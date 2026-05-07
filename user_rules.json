@@ -20,9 +20,9 @@
     ],
     "isNativeVideo": true,
     "videoSelector": "video",
-    "mainFrameSelector": ".artplayer-app, .jwplayer",
+    "mainFrameSelector": ".jwplayer, .artplayer-app",
     "subtitlesContainer": ".jw-captions, .jw-subtitles-text, .art-subtitle, .art-subtitles",
-    "injectBy": "track",
+    "injectBy": "auto",
     "autoEnabledBilingualSubtitles": true,
     "quickButtonRule": {
       "appendSelector": ".art-controls-right, .jw-controlbar-right-group",
