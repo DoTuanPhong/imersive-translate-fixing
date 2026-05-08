@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Megaplay.buzz Ultra-Patch (Anti-Debug & Subtitle)
 // @namespace    http://tampermonkey.net/
-// @version      2.4
+// @version      2.5
 // @description  Aggressive anti-debug bypass and VTT injection for Immersive Translate
 // @author       Antigravity
 // @match        *://anisuge.tv/*
@@ -196,6 +196,9 @@
 
                     if (cues.length === 0) { log('No cues found in VTT!'); return; }
 
+                    // Start subtitle engine FIRST (before track injection)
+                    startSubtitleEngine(cues);
+
                     const langs = [
                         { id: 'en', label: 'English' },
                         { id: 'ja', label: 'Japanese' }
@@ -278,7 +281,47 @@
         }
     };
 
-    // --- 6. Loop ---
+    // --- 6. Subtitle rendering engine ---
+    let subtitleEngine = null;
+    let currentCues = [];
+    let lastRenderedText = '';
+
+    function startSubtitleEngine(cues) {
+        const video = document.querySelector('video');
+        if (!video) return;
+
+        const container = document.querySelector('.jw-captions, .art-subtitle, .art-subtitles');
+        if (!container) { log('No subtitle container for engine'); return; }
+
+        if (subtitleEngine) clearInterval(subtitleEngine);
+        currentCues = cues;
+        lastRenderedText = '';
+
+        log(`Subtitle engine started: ${cues.length} cues`);
+
+        subtitleEngine = setInterval(() => {
+            const ct = video.currentTime;
+            if (ct === undefined) return;
+
+            const active = currentCues.filter(c => c.start <= ct && c.end >= ct);
+            const text = active.map(c => c.text).join('\n');
+
+            if (text !== lastRenderedText) {
+                container.innerHTML = '';
+                active.forEach(c => {
+                    const span = document.createElement('span');
+                    span.textContent = c.text;
+                    span.style.display = 'block';
+                    container.appendChild(span);
+                });
+                lastRenderedText = text;
+            } else if (!text && !container.innerHTML.trim()) {
+                // already empty, no-op
+            }
+        }, 250);
+    }
+
+    // --- 7. Loop ---
     setInterval(() => { injectTracks(); setupListeners(); startDomMonitor(); }, 3000);
 
     // Fix icon visibility

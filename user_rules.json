@@ -7,41 +7,26 @@
     }
   },
   {
-    "id": "anisuge_custom_v4",
+    "id": "anisuge_megaplay_custom",
     "matches": [
       "anisuge.tv",
-      "megaplay.buzz",
-      "kwik.cx",
-      "kwik.si",
-      "kwik.sh",
-      "vidstream.pro",
-      "1anime.site",
-      "hianime.to"
+      "megaplay.buzz"
     ],
     "isNativeVideo": true,
     "videoSelector": "video",
-    "mainFrameSelector": ".jwplayer, .artplayer-app",
-    "subtitlesContainer": ".jw-captions, .jw-subtitles-text, .art-subtitle, .art-subtitles",
+    "subtitlesContainer": ".jw-captions, .jw-subtitles-text",
     "injectBy": "auto",
     "autoEnabledBilingualSubtitles": true,
     "quickButtonRule": {
-      "appendSelector": ".art-controls-right, .jw-controlbar-right-group",
-      "insertBeforeSelector": ".art-control-setting, .jw-icon-fullscreen"
+      "appendSelector": ".jw-controlbar-right-group"
     },
     "sourceLanguageUrlPattern": {
       "en": {
-        "matches": [
-          "anisuge.tv",
-          "megaplay.buzz",
-          "kwik.cx",
-          "vidstream.pro"
-        ]
+        "matches": ["anisuge.tv", "megaplay.buzz"]
       }
     },
     "additionalInjectedCss": [
-      ".immersive-translate-quick-button-container { display: inline-flex !important; opacity: 1 !important; visibility: visible !important; filter: brightness(0) invert(1) !important; z-index: 2147483647 !important; }",
-      ".art-controls-right .immersive-translate-quick-button-container, .jw-controlbar-right-group .immersive-translate-quick-button-container { float: left !important; width: 24px !important; height: 24px !important; margin: 0 6px !important; }",
-      ".immersive-translate-quick-button-container img { width: 24px !important; height: 24px !important; object-fit: contain !important; }"
+      ".immersive-translate-quick-button-container { filter: brightness(0) invert(1) !important; }"
     ]
   }
 ]

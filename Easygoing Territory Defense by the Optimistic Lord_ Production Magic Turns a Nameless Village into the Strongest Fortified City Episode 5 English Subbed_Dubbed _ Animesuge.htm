@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en" data-immersive-translate-page-theme="dark" style=""><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><script async="" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/get_counts"></script><script async="" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/65b513872bb34700194aa40b.js"></script><script id="imt-subtitles-inject">(()=>{var m="imt-subtitle-inject",p=class{from;to;constructor(t,r){this.from=t,this.to=r}sendMessages(t){globalThis.postMessage({eventType:m,to:this.to,from:this.from,type:t.type,data:t.data,id:t.id||new Date().getTime(),isAsync:!1})}getRandomId(){return(new Date().getTime()+Math.random())*Math.random()}sendAsyncMessages({type:t,data:r}){return new Promise(e=>{let n=this.getRandomId();globalThis.postMessage({eventType:m,to:this.to,from:this.from,type:t,data:r,id:n,isAsync:!0});let i=a=>{let u=a.data;m===u.eventType&&u.id===n&&u.to===this.from&&(e(u.data),globalThis.removeEventListener("message",i))};globalThis.addEventListener("message",i)})}handleMessageOnce(t){return new Promise(r=>{let e=n=>{let i=n.data;m===i.eventType&&i.type===t&&i.to===this.from&&(r(i.data),globalThis.removeEventListener("message",e))};globalThis.addEventListener("message",e)})}handleMessage(t,r){let e=n=>{let i=n.data;m===i.eventType&&i.type===t&&i.to===this.from&&r(i)};return globalThis.addEventListener("message",e),()=>{globalThis.removeEventListener("message",e)}}handleMessages(t){let r=({data:e})=>{m===e.eventType&&e.to===this.from&&t(e)};return globalThis.addEventListener("message",r),()=>{globalThis.removeEventListener("message",r)}}},_=new p("content-script","inject"),f=new p("inject","content-script"),E={get(s,t,r){return t in s?(...e)=>{let n=s[t];return typeof n=="function"?n.apply(s,e):Reflect.get(s,t,r)}:e=>s.sendAsyncMessages({type:t,data:e})}},y=new Proxy(f,E),C=new Proxy(_,E);function g(s){if(!s)return null;try{let t=s;return s.startsWith("//")?t=globalThis.location.protocol+s:s.startsWith("/")?t=`${globalThis.location.protocol}//${globalThis.location.host}${s}`:s.startsWith("http")||(t=`${globalThis.location.protocol}//${s}`),new URL(t).toString()}catch{return s}}var o=class{content=y;config;constructor(t){this.config=t,f.handleMessages(async({type:r,id:e,data:n})=>{let i=this[r];if(!i)return;let a=i.apply(this,[n]);a instanceof Promise&&(a=await a),f.sendMessages({id:e,data:a})})}triggerSubtitle(t){}async translateSubtitle(t){let r=await this.content.requestSubtitle({url:g(t._url)});if(r){if(this.config.responseType=="document"){let n=new DOMParser().parseFromString(r,"text/xml");Object.defineProperty(t,"responseXML",{value:n,writable:!1}),Object.defineProperty(t,"response",{value:n,writable:!1});return}let e=r;(t.responseType=="arraybuffer"||this.config.responseType=="arraybuffer")&&typeof r=="string"&&(e=new TextEncoder().encode(r).buffer),Object.defineProperty(t,"responseText",{value:e,writable:!1}),Object.defineProperty(t,"response",{value:e,writable:!1})}}async translateSubtitleWithResponse(t,r){return await this.content.requestSubtitle({url:g(t),responseText:r})}startRequestSubtitle(t){this.content.startRequestSubtitle({url:g(t)})}subtitleRequestError(t){this.content.subtitleRequestError({...t,url:g(t.url)})}async isOnlyResponse(){return this.config.hookType.includes("xhr_response")}async translateSubtitleWithFetch(t,r){let e={...r},n;return typeof t=="string"?n={url:t,method:"GET",headers:{}}:n=await D(t),e?.body&&(e.body=I(e.body)),this.content.requestSubtitle({fetchInfo:JSON.stringify({input:n,options:e})})}async getVideoMeta(t){}getCurrentTime(){return null}getCurrentDuration(){return null}isSubtitleRequest(t){return!this.config||!this.config.subtitleUrlRegExp||!t?!1:new RegExp(this.config.subtitleUrlRegExp).test(t||"")}};function D(s){if(s instanceof URL)return{url:s.href,method:"GET",headers:{}};let t=s.clone(),r={url:s.url,method:s.method,headers:Object.fromEntries(s.headers.entries())};if(t.body){let e=I(t.body);if(t.body!==e)return t.text().then(n=>(r.body=n,r));r.body=e}return Promise.resolve(r)}function I(s){if(!s)return s;if(s instanceof FormData||s instanceof URLSearchParams){let t={};for(let[r,e]of s.entries())t[r]=e;return t._formatBodyType="FormData",t}return s}var b=class extends o{timer=null;triggerSubtitle({force:t}){setTimeout(()=>{if(this.config?.subtitleButtonSelector){let r=document.querySelector(this.config.subtitleButtonSelector);if(r){let e=r.getAttribute("aria-pressed")==="true";e&&t?(r.click(),setTimeout(()=>{r.click()},100)):e||r.click();return}}if(this.config?.videoPlayerSelector){let r=document.querySelector(this.config.videoPlayerSelector);r?.toggleSubtitles(),setTimeout(()=>{r?.toggleSubtitles()},100)}},1e3)}async getVideoMeta(){if(!this.config.videoPlayerSelector)return null;try{return await this.sleep(100),document.querySelector(this.config.videoPlayerSelector)?.getPlayerResponse()}catch{return null}}async isOnlyResponse(){let t=await super.isOnlyResponse();return!t||(await this.getVideoMeta())?.videoDetails?.isLive?!1:t}getCurrentTime(){try{return this.config.videoPlayerSelector?document.querySelector(this.config.videoPlayerSelector)?.getCurrentTime():null}catch{return null}}getCurrentDuration(){try{return this.config.videoPlayerSelector?document.querySelector(this.config.videoPlayerSelector)?.getDuration():null}catch{return null}}sleep(t){return new Promise(r=>{setTimeout(()=>{r(null)},t)})}};var S=class extends o{timer=null;videoMeta={};lastVideoMeta=null;constructor(t){super(t),this.hookJSON()}hookJSON(){let t=JSON.parse;JSON.parse=r=>{let e=t(r);try{e&&e.result&&e.result.timedtexttracks&&e.result.movieId&&(this.videoMeta[e.result.movieId]=e.result,this.lastVideoMeta=e.result)}catch{}return e}}getVideoMeta(t){return this.lastVideoMeta}};var R=class extends o{timer=null;videoMeta={};constructor(t){super(t),this.hookJSON()}hookJSON(){let t=JSON.parse;JSON.parse=r=>{let e=t(r);try{e?.asset?.captions?.length?this.videoMeta[e.id]=e?.asset:e?.previews&&e?.course&&e?.previews?.forEach(n=>{this.videoMeta[n.id]=n})}catch{}return e}}getVideoMeta(t){return this.videoMeta[t]}};var v=class extends o{timer=null;videoMeta={};constructor(t){super(t),this.hookJSON()}hookJSON(){let t=JSON.parse;JSON.parse=r=>{let e=t(r);try{if(e?.stream?.sources?.length&&e?.stream?.sources[0]?.complete?.url){let n=window.location.pathname.split("/");n.length>2&&n[n.length-2]==="video"&&(this.videoMeta[n[n.length-1]]=e.stream.sources[0].complete.url)}}catch{}return e}}getVideoMeta(t){return this.videoMeta[t]}};var M=class extends o{constructor(t){super(t)}async translateSubtitleWithFetch(t,r){this.main(t,r)}async main(t,r){let e=globalThis.__originalFetch;if(!e)return;let n=t;t instanceof Request&&(n=t.clone());let i=await e(n,r);if(!i.ok)return;let a=await i.json();a.transcripts_urls&&this.requestSubtitle(a.transcripts_urls)}async requestSubtitle(t){await l(),await this.content.requestSubtitle(t)}};var T=class extends o{constructor(t){super(t)}lang="";async translateSubtitleWithFetch(t,r){this.main(t,r)}async main(t,r){let e=globalThis.__originalFetch;if(!e)return;let n=this.getUrl(t);return/textstream_/.test(n)?this.parseLang(n):this.parseAllSubs(t,r,e)}getUrl(t){return t.toString()}async parseLang(t){let e=t.match(/textstream_(\w+)=/)?.[1];return!e||e==this.lang||(this.lang=e,await l(),this.content.changeLang(e)),null}async parseAllSubs(t,r,e){if(!e)return;let n=t;t instanceof Request&&(n=t.clone());let i=await e(n,r);if(!i.ok)return;let a=await i.json();a.text_track_urls&&this.requestSubtitle(a.text_track_urls)}async requestSubtitle(t){await l(),await this.content.requestSubtitle(t)}};var w=class extends o{requestedSubtitleUrls=new Set;constructor(t){super(t),t.id=="ted"&&this.ted()}ted(){try{let r=document.querySelector("#__NEXT_DATA__")?.textContent;if(!r)return;let n=JSON.parse(r)?.props?.pageProps?.videoData;if(!n)return;let i=n.playerData;if(!i)return;let a=typeof i=="string"?JSON.parse(i):i,u=a?.resources?.hls?.metadata,h=a?.languages;if(!u||!Array.isArray(h))return;let c=new URL(u,window.location.href);h.forEach(({languageCode:q})=>{if(!q)return;let j=q.toLowerCase(),L=c.pathname.replace(/metadata\.json$/,`subtitles/${j}/full.vtt`);if(L===c.pathname)return;let P=`${c.origin}${L}${c.search}`;this.requestedSubtitleUrls.has(P)||(this.requestedSubtitleUrls.add(P),this.requestSubtitle(P).catch(k=>{}))})}catch{}}async requestSubtitle(t){await l(),await this.translateSubtitleWithFetch(t)}};var O={hookRequest:()=>{}};async function U(){let s=await f.sendAsyncMessages({type:"getConfig"});if(!s)return;let r={youtube:b,netflix:S,webvtt:o,khanacademy:o,udemy:R,general:o,ebutt:o,hulu:M,mubi:T,edx:o,disneyplus:v,"fmp4.xml":o,multi_attach_vtt:w,twitter:o,subsrt:o,xml:o,text_track_dynamic:o,av:o}[s.type||""];if(!r)return;let e=new r(s);O.hookRequest(e,s)}O.hookRequest=(s,t)=>{if(t.hookType.includes("xhr")){let r=XMLHttpRequest.prototype.open,e=XMLHttpRequest.prototype.send,n=function(){return this._url=typeof arguments[1]=="string"?arguments[1]:arguments[1]?.href,r.apply(this,arguments)},i=async function(){let a=this._url,u=s.isSubtitleRequest(a);return!a||!u?e.apply(this,arguments):(await s.isOnlyResponse()?(s.startRequestSubtitle(a),this.onreadystatechange=async()=>{let c=XMLHttpRequest.DONE;typeof c>"u"&&(c=4),this.readyState===c&&this.status===429&&s.subtitleRequestError({url:a,responseStatus:this.status}),this.readyState===c&&this.status===200&&await l()&&s.translateSubtitleWithResponse(a,this.responseText)}):await l()&&await s.translateSubtitle(this),e.apply(this,arguments))};Object.defineProperty(XMLHttpRequest.prototype,"open",{value:n,writable:!0}),Object.defineProperty(XMLHttpRequest.prototype,"send",{value:i,writable:!0})}if(t.hookType.includes("fetch")){let r=globalThis.fetch;globalThis.__originalFetch=r,globalThis.fetch=async function(e,n){let i=typeof e=="string"?e:e.url||e.href;if(!s.isSubtitleRequest(i))return r(e,n);if(await l()){let h=await s.translateSubtitleWithFetch(e,n);return h?new Response(h):r(e,n)}return r(e,n)}}};var x=!1;function l(){if(!x){let s=f.handleMessageOnce("contentReady").then(()=>(x=!0,!0));return y.isContentReady(),Promise.race([s,new Promise(t=>{setTimeout(()=>{t(!1)},5e3)})])}return Promise.resolve(x)}l();U();})();
+</script>
+    <title>
+    Easygoing Territory Defense by the Optimistic Lord: Production Magic
+ Turns a Nameless Village into the Strongest Fortified City Episode 5 
+English Subbed/Dubbed | Animesuge</title>
+<meta charset="utf-8"><meta http-equiv="content-language" content="en">
+<meta name="description" content="Watch and Download Easygoing Territory Defense by the Optimistic Lord: Production Magic Turns a Nameless Village into the Strongest Fortified City Episode 5 English Subbed FREE Online Anime with English Subbed and Dubbed. Animesuge will always be the first to have the episode.">
+<link href="https://anisuge.tv/assets/images/favicon.png" type="image/x-icon" rel="icon"><link href="https://anisuge.tv/assets/images/favicon.png" type="image/x-icon" rel="shortcut icon"><meta property="og:title" content="Easygoing Territory Defense by the Optimistic Lord: Production Magic Turns a Nameless Village into the Strongest Fortified City Episode 5 English Subbed/Dubbed | Animesuge">
+<meta property="og:image" content="https://cdn.anipixcdn.co/thumbnail/c9041cfd2a40932691855abd98fd219a.jpg">
+<meta name="robots" content="index, follow">
+<meta name="revisit-after" content="1 days">
+<!-- base href="https://anisuge.tv/" -->
+<meta property="og:type" content="website">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<link rel="manifest" href="https://anisuge.tv/assets/manifest.json">
+<meta property="og:description" content="Watch and Download Easygoing Territory Defense by the Optimistic Lord: Production Magic Turns a Nameless Village into the Strongest Fortified City Episode 5 English Subbed FREE Online Anime with English Subbed and Dubbed. Animesuge will always be the first to have the episode.">
+<meta name="csrf-token" content="">
+<link rel="canonical" href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-5">
+<script type="text/javascript" async="" charset="utf-8" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/recaptcha__en.js" crossorigin="anonymous" integrity="sha384-RlZBF+DceOCqWmazqOb46XLCUaBCQCOelQ6x5Vp23p2IQF2OluFH9XDriL4JIqbh"></script><script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "url": "https://anisuge.tv/",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://anisuge.tv/filter?keyword={keyword}",
+      "query-input": "required name=keyword"
+    }
+  }
+</script>
+<link href="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/css2.css" rel="stylesheet">
+<link rel="stylesheet" type="text/css" href="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/swiper.min.css">
+<link rel="stylesheet" href="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/line-awesome.min.css">
+<link rel="stylesheet" type="text/css" href="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/tooltipster.bundle.min.css">
+<link rel="stylesheet" href="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/style.css"><!-- Google tag (gtag.js) -->
+<script async="" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/google-analytics_analytics.js"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-BLZ3T425TS');
+</script>
+
+<meta name="adbytes-site-verification" content="16583cd1ba577128f2c78d355d1f0c999eb8f4002da46a90539d0c15ce1c39fa">
+<style>
+d-none{display:none;}
+</style>
+<script async="" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/googlesyndication_adsbygoogle.js" crossorigin="anonymous"></script>
+<meta name="_mg-domain-verification" content="7f9339b36ca7a1a24bd789a050c66ac8">
+
+<script defer="defer" data-domain="animesuge.bz" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/script.js"></script><script type="module" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/index.js"></script>
+<link rel="stylesheet" href="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/comment.css"><script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/065e62ec90168c435ef226daedc8a572.js"></script><script async="" data-cfasync="false" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/noop.js"></script><style type="text/css">#st-1 {
+  font-family: "Helvetica Neue", Verdana, Helvetica, Arial, sans-serif;;
+  direction: ltr;
+  display: block;
+  opacity: 1;
+  text-align: left;
+  z-index: 94034;
+}
+#st-1.st-animated {
+  -moz-transition: o 0.2s ease-in, p 0.2s ease-in, a 0.2s ease-in, c 0.2s ease-in, i 0.2s ease-in, t 0.2s ease-in, y 0.2s ease-in; -ms-transition: o 0.2s ease-in, p 0.2s ease-in, a 0.2s ease-in, c 0.2s ease-in, i 0.2s ease-in, t 0.2s ease-in, y 0.2s ease-in; -o-transition: o 0.2s ease-in, p 0.2s ease-in, a 0.2s ease-in, c 0.2s ease-in, i 0.2s ease-in, t 0.2s ease-in, y 0.2s ease-in; -webkit-transition: o 0.2s ease-in, p 0.2s ease-in, a 0.2s ease-in, c 0.2s ease-in, i 0.2s ease-in, t 0.2s ease-in, y 0.2s ease-in; transition: o 0.2s ease-in, p 0.2s ease-in, a 0.2s ease-in, c 0.2s ease-in, i 0.2s ease-in, t 0.2s ease-in, y 0.2s ease-in;
+}
+#st-1.st-hidden {
+  opacity: 0;
+}
+
+#st-1.st-preview {
+  display: none!important;
+  opacity: 0!important;
+}
+#st-1.st-hide {
+  display: none;
+}
+#st-1 .st-btn {
+  -moz-box-sizing: border-box;
+-webkit-box-sizing: border-box;
+box-sizing: border-box;
+  -moz-transition: opacity 0.2s ease-in, top 0.2s ease-in; -ms-transition: opacity 0.2s ease-in, top 0.2s ease-in; -o-transition: opacity 0.2s ease-in, top 0.2s ease-in; -webkit-transition: opacity 0.2s ease-in, top 0.2s ease-in; transition: opacity 0.2s ease-in, top 0.2s ease-in;
+  -moz-border-radius: 4px;
+-webkit-border-radius: 4px;
+border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+  font-size: 12px;
+  height: 32px;
+  line-height: 32px;
+  margin-right: 8px;
+  padding: 0 10px;
+  position: relative;
+  text-align: center;
+  top: 0;
+  vertical-align: top;
+  white-space: nowrap;
+}
+#st-1 .st-btn:last-child {
+  margin-right: 0;
+}
+#st-1 .st-btn > svg {
+  height: 16px;
+  width: 16px;
+  position: relative;
+  top: 8px;
+  vertical-align: top;
+}
+#st-1 .st-btn > img {
+  display: inline-block;
+  height: 16px;
+  width: 16px;
+  position: relative;
+  top: 8px;
+  vertical-align: top;
+}
+#st-1 .st-btn > span {
+  -moz-transition: all 0.2s ease-in; -ms-transition: all 0.2s ease-in; -o-transition: all 0.2s ease-in; -webkit-transition: all 0.2s ease-in; transition: all 0.2s ease-in;
+  color: #fff;
+  display: inline-block;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  min-width: 60px;
+  opacity: 1;
+  padding: 0 6px;
+  position: relative;
+  vertical-align: top;
+}
+#st-1.st-has-labels .st-btn {
+  min-width: 120px;
+}
+#st-1.st-has-labels .st-btn.st-remove-label {
+  min-width: 50px;
+}
+#st-1.st-has-labels .st-btn.st-remove-label > span {
+  display: none;
+}
+#st-1.st-has-labels .st-btn.st-hide-label > span {
+  display: none;
+}
+#st-1 .st-total {
+  color: #555;
+  display: inline-block;
+  font-weight: 500;
+  line-height: 12px;
+  margin-right: 0;
+  max-width: 80px;
+  padding: 4px 8px;
+  text-align: center;
+}
+#st-1 .st-total.st-hidden {
+  display: none;
+}
+#st-1 .st-total > span {
+  font-size: 16px;
+  line-height: 17px;
+  display: block;
+  padding: 0;
+}
+#st-1 .st-total > span.st-shares {
+  font-size: 9px;
+  line-height: 9px;
+}
+#st-1.st-justified {
+  display: flex;
+  text-align: center;
+}
+#st-1.st-justified .st-btn {
+  -moz-flex: 1;
+-ms-flex: 1;
+-webkit-flex: 1;
+flex: 1;
+}#st-1 .st-btn:hover {
+  opacity: .8;
+  top: -4px;
+}#st-1 .st-btn[data-network='facebook'] {
+  background-color: #4267B2
+}
+#st-1 .st-btn[data-network='facebook'] img {
+  filter: 
+}
+#st-1 .st-btn[data-network='facebook'] > span {
+  color: #fff
+}
+#st-1 .st-btn[data-network='twitter'] {
+  background-color: #000000
+}
+#st-1 .st-btn[data-network='twitter'] img {
+  filter: 
+}
+#st-1 .st-btn[data-network='twitter'] > span {
+  color: #fff
+}
+#st-1 .st-btn[data-network='messenger'] {
+  background-color: #448AFF
+}
+#st-1 .st-btn[data-network='messenger'] img {
+  filter: 
+}
+#st-1 .st-btn[data-network='messenger'] > span {
+  color: #fff
+}
+#st-1 .st-btn[data-network='reddit'] {
+  background-color: #ff4500
+}
+#st-1 .st-btn[data-network='reddit'] img {
+  filter: 
+}
+#st-1 .st-btn[data-network='reddit'] > span {
+  color: #fff
+}
+#st-1 .st-btn[data-network='whatsapp'] {
+  background-color: #25d366
+}
+#st-1 .st-btn[data-network='whatsapp'] img {
+  filter: 
+}
+#st-1 .st-btn[data-network='whatsapp'] > span {
+  color: #fff
+}
+#st-1 .st-btn[data-network='telegram'] {
+  background-color: #0088cc
+}
+#st-1 .st-btn[data-network='telegram'] img {
+  filter: 
+}
+#st-1 .st-btn[data-network='telegram'] > span {
+  color: #fff
+}
+#st-1 .st-btn[data-network='sharethis'] {
+  background-color: #95D03A
+}
+#st-1 .st-btn[data-network='sharethis'] img {
+  filter: 
+}
+#st-1 .st-btn[data-network='sharethis'] > span {
+  color: #fff
+}#st-1 .st-btn[data-network='snapchat'] > span {
+  color: #333};
+}</style></head>
+
+<body style="">
+    <div class="wrapper">
+        <header>
+            <div class="container">
+                <div class="unix-head-wrap">
+                    <button id="menu-toggler" class="d-flex align-items-center mr-2 p-0 d-none d-lg-flex d-xl-none">
+                        <i class="las la-bars"></i>
+                    </button>
+                    <div class="logo">
+                                                <a href="https://anisuge.tv/home" id="logo">
+                            <img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/logo.png" alt="Animesuge">                        </a>
+                    </div>
+                    <div id="unix-head-menu">
+                        <ul>
+                            <li class="have-sub">
+                                <a href="javascript:;" title="Genres">Genres</a>
+                                <ul class="c3">
+                                                                            <li><a href="https://anisuge.tv/genre/action" title="Action">
+                                                Action                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/adventure" title="Adventure">
+                                                Adventure                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/cars" title="Cars">
+                                                Cars                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/comedy" title="Comedy">
+                                                Comedy                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/dementia" title="Dementia">
+                                                Dementia                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/demons" title="Demons">
+                                                Demons                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/drama" title="Drama">
+                                                Drama                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/ecchi" title="Ecchi">
+                                                Ecchi                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/fantasy" title="Fantasy">
+                                                Fantasy                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/game" title="Game">
+                                                Game                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/harem" title="Harem">
+                                                Harem                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/historical" title="Historical">
+                                                Historical                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/horror" title="Horror">
+                                                Horror                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/isekai" title="Isekai">
+                                                Isekai                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/josei" title="Josei">
+                                                Josei                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/kids" title="Kids">
+                                                Kids                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/magic" title="Magic">
+                                                Magic                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/martial-arts" title="Martial Arts">
+                                                Martial Arts                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/mecha" title="Mecha">
+                                                Mecha                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/military" title="Military">
+                                                Military                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/music" title="Music">
+                                                Music                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/mystery" title="Mystery">
+                                                Mystery                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/parody" title="Parody">
+                                                Parody                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/police" title="Police">
+                                                Police                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/psychological" title="Psychological">
+                                                Psychological                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/romance" title="Romance">
+                                                Romance                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/samurai" title="Samurai">
+                                                Samurai                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/school" title="School">
+                                                School                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/sci-fi" title="Sci-Fi">
+                                                Sci-Fi                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/seinen" title="Seinen">
+                                                Seinen                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/shoujo" title="Shoujo">
+                                                Shoujo                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/shoujo-ai" title="Shoujo Ai">
+                                                Shoujo Ai                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/shounen" title="Shounen">
+                                                Shounen                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/shounen-ai" title="Shounen Ai">
+                                                Shounen Ai                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/slice-of-life" title="Slice of Life">
+                                                Slice of Life                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/space" title="Space">
+                                                Space                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/sports" title="Sports">
+                                                Sports                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/super-power" title="Super Power">
+                                                Super Power                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/supernatural" title="Supernatural">
+                                                Supernatural                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/thriller" title="Thriller">
+                                                Thriller                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/unknown" title="unknown">
+                                                unknown                                            </a>
+                                        </li>
+                                                                            <li><a href="https://anisuge.tv/genre/vampire" title="Vampire">
+                                                Vampire                                            </a>
+                                        </li>
+                                                                    </ul>
+                            </li>
+                            <li class="have-sub">
+                                <a href="javascript:;" title="Types">Types</a>
+                                <ul>
+                                                                            <li><a href="https://anisuge.tv/type/movie">
+                                                MOVIE                                            </a></li>
+                                                                            <li><a href="https://anisuge.tv/type/music">
+                                                MUSIC                                            </a></li>
+                                                                            <li><a href="https://anisuge.tv/type/ona">
+                                                ONA                                            </a></li>
+                                                                            <li><a href="https://anisuge.tv/type/ova">
+                                                OVA                                            </a></li>
+                                                                            <li><a href="https://anisuge.tv/type/special">
+                                                SPECIAL                                            </a></li>
+                                                                            <li><a href="https://anisuge.tv/type/tv">
+                                                TV                                            </a></li>
+                                                                    </ul>
+                            </li>
+                            <li><a href="https://anisuge.tv/latest-updated" title="Updated">Updated</a></li>
+                            <li><a href="https://anisuge.tv/new-release" title="Added">Added</a>
+                            </li>
+                            <li><a href="https://anisuge.tv/most-viewed" title="Most Viewed">Popular</a></li>
+                            <li><a href="https://anisuge.tv/status/finished-airing" title="Completed">Completed</a></li>
+                            <li><a href="https://anisuge.tv/status/currently-airing" title="Ongoing">Ongoing</a></li>
+                            <li><a href="https://anisuge.tv/status/not-yet-aired" title="Upcoming">Upcoming</a></li>
+                            <li>
+                                <a href="javascript:;" title="Schedule" class="toggle-schedule">Schedule</a>
+                            </li>
+                            <li>
+                                <a href="https://anisuge.tv/random" title="Random">Random</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div id="language-switch" class="jp">
+                        <span class="en">EN</span> <span class="jp">JP</span>
+                    </div>
+                    <div class="unix-site-search search-wrap">
+                        <button class="btn unix-head-btn show-search "><i class="las la-search"></i></button>
+                        <div class="inner">
+                            <form autocomplete="off" action="https://anisuge.tv/filter">
+                                <i class="las la-search"></i> <input type="text" placeholder="Search" name="keyword"> <a class="filter-btn btn btn-sm btn-secondary" href="https://anisuge.tv/filter">Filter</a>
+                            </form>
+                            <div class="suggestion"></div>
+                        </div>
+                    </div>
+                    <div id="user-box"><a class="unix-head-btn guest btn" data-toggle="modal" data-target="#sign"><i class="lar la-user-circle"></i> Sign In</a></div>
+                </div>
+            </div>
+        </header>
+                                    <main class="">
+    <div class="container watch-wrap" itemprop="mainEntity" itemscope="" itemtype="https://schema.org/Movie" data-id="8552" data-url="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi" data-ep-name="5" data-ep-type="">
+        <div class="wrap-main border-top border-secondary pt-5">
+            <aside class="primary-content">
+                <section id="media-box">
+                    <div class="media-wrap playable">
+                        <div class="media-bg " style="background-image: url('https://s4.anilist.co/file/anilistcdn/media/anime/banner/191205-1ZMdtwrP4ClU.jpg')">
+                        </div>
+                        <div class="media-inner">
+                            <div id="player"><iframe src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/sub.htm" allow="autoplay; fullscreen" allowfullscreen="yes" frameborder="no" scrolling="no" style="width: 100%; height: 100%; overflow: hidden;"></iframe></div>
+                        </div>
+                    </div>
+                    <div id="media-controls">
+                        <div class="media-controls-wrap">
+                            <div class="media-control auto-play" data-name="auto_play" data-persist="true" data-default="0" data-off="&lt;i class=&quot;las la-stop&quot;&gt;&lt;/i&gt; Auto Play" data-on="&lt;i class=&quot;las la-check-square&quot;&gt;&lt;/i&gt; Auto Play"><i class="las la-stop"></i> Auto Play</div>
+                            <div class="media-control auto-next" data-name="auto_next" data-persist="true" data-default="0" data-off="&lt;i class=&quot;las la-stop&quot;&gt;&lt;/i&gt; Auto Next" data-on="&lt;i class=&quot;las la-check-square&quot;&gt;&lt;/i&gt; Auto Next"><i class="las la-stop"></i> Auto Next</div>
+                            <div class="media-control auto-skip" data-name="auto_skip_intro" data-persist="true" data-default="0" data-off="&lt;i class=&quot;las la-stop&quot;&gt;&lt;/i&gt; Auto Skip" data-on="&lt;i class=&quot;las la-check-square&quot;&gt;&lt;/i&gt; Auto Skip"><i class="las la-stop"></i> Auto Skip</div>
+                            <div class="skiptime dropdown" style="display:none" data-toggle="tooltip" data-placement="top" title="" data-original-title="Please help us by contributing time to skip the intro, outro. HOW TO: Click to an input field, then seek the video to the correct position, the time will automatic filled to the field, then submit the form. HOW IT WORKS: The system will automatic skip the video from [BEGIN] to [END].">
+                                <div class="media-control" data-toggle="dropdown" data-placeholder="false"> <i class="las la-stopwatch"></i> Set skip time </div>
+                                <ul class="dropdown-menu noclose">
+                                    <li>
+                                        <div class="input">
+                                            <div class="intro block">
+                                                <div class="line"><i></i></div>
+                                                <div class="group begin"> <label>Intro begin</label> <input type="text" name="intro_begin" class="form-control form-control-sm" placeholder="00:00:00" autocomplete="off"> </div>
+                                                <div class="group end"> <label>Intro end</label> <input type="text" name="intro_end" class="form-control form-control-sm" placeholder="00:00:00" autocomplete="off"> </div>
+                                            </div>
+                                            <div class="outro block">
+                                                <div class="line"><i></i></div>
+                                                <div class="group begin"> <label>Outro begin</label> <input type="text" name="outro_begin" class="form-control form-control-sm" placeholder="00:00:00" autocomplete="off"> </div>
+                                                <div class="group end"> <label>Outro end</label> <input type="text" name="outro_end" class="form-control form-control-sm" placeholder="00:00:00" autocomplete="off"> </div>
+                                            </div>
+                                            <div class="submit"> <button class="btn btn-sm mt-2 btn-secondary2 border-text-major rounded-0 w-100" type="button">Contribute</button> </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="light media-control"><i class="lar la-lightbulb"></i> <span>Light</span>
+                            </div>
+                            <div class="dropdown limit-w favourite" data-id="8552" data-fetch="true">
+                                <div class="media-control" data-toggle="dropdown" data-placeholder="false" data-add="&lt;i class=&quot;las la-bookmark&quot;&gt;&lt;/i&gt; &lt;span&gt;Add Bookmark&lt;/span&gt;" data-edit="&lt;i class=&quot;las la-edit&quot;&gt;&lt;/i&gt; &lt;span&gt;Edit Bookmark&lt;/span&gt;"><i class="las la-bookmark"></i> <span>Add Bookmark</span></div>
+                                <div class="dropdown-menu dropdown-menu-right folders"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-announcement alert-dismissible">
+                        <button type="button" class="close" data-dismiss="alert">
+                            <i class="las la-times"></i>
+                        </button>Join Animesuge Anime Telegram&nbsp;<a href="https://t.me/animesugetv"> @animesugetv</a>
+                    </div>
+                                            <div class="alert alert-announcement alert-dismissible">
+                            <button type="button" class="close" data-dismiss="alert">
+                                <i class="las la-times"></i>
+                            </button><i class="las la-bullhorn mr-2"></i>
+                            The next episode is predicted to arrive on
+                            2026/03/25 01:00 PM GMT (<span class="count-down" data-target="1774443600" data-reached="It's coming" data-format="human">It's coming</span>)
+                        </div>
+                                        <div id="media-servers"><div class="server-notice">
+            <div>You are watching <b>Episode 5</b></div> <span>(If the current server doesn't work, please try other servers beside.)</span>
+        </div><div class="server-wrapper"><div class="server-type type mb-2" data-type="sub">
+                    <div class="name">
+                        <span data-toggle="tooltip" title="" data-original-title="Soft sub that can be toggled on/off"><svg>
+                            <use xlink:href="#icon-sub"></use>
+                        </svg> Sub:</span>
+                    </div>
+                    <div class="server-list">
+                        <div class="server active" data-ep-id="130638" data-cmid="animixplay-fqsqfvdf4u" data-sv-id="e54" data-link-id="MTF1dkFtaW9BRTZPbzJJRElFZUZrOWdjeldjOERLaWNMMXFNbVB3WUJqOGdCT1JkdmlSZzZXQUg2ZjhSZ2RuMEI2QkJoc29nZU1DT0swRTJwL01PRUE9PQ">
+                            <div><span>Megaplay-1</span></div>
+                        </div> <div class="server" data-ep-id="130638" data-cmid="animixplay-fqsqfvdf4u" data-sv-id="0f5" data-link-id="MTF1dkFtaW9BRTZPbzJJRElFZUZreUwzRFBHR2Fkdmc2YjVmc0xTWDBmdFBpY3Y3KzVKWEJVbFRJeWp5d3hyKzNtcjJjem1yQWtyUkVaZjl1LzZtSWc9PQ">
+                            <div><span>Vidwish-1</span></div>
+                        </div> 
+                    </div>
+                </div><div class="server-type type mb-2" data-type="sub"><div class="name"><span data-original-title="Hard sub that includes signs &amp; songs/kara, sub effects" data-toggle="tooltip"><svg><use xlink:href="#icon-sub"></use></svg> H-SUB:</span></div><div class="server-list"><div class="server" data-ep-id="130638" data-cmid="animixplay-fqsqfvdf4u" data-sv-id="xtp" data-link-id="MTF1dkFtaW9BRTZPbzJJRElFZUZrNUdmenQ4L01ZbUxGOU9ZdWlxOE1WZ1Viek8yWnB5djJ2S3lrWStGQ3ZvaA"> <div><span>Kiwi-Stream-360p</span></div> </div> <div class="server" data-ep-id="130638" data-cmid="animixplay-fqsqfvdf4u" data-sv-id="xtp" data-link-id="MTF1dkFtaW9BRTZPbzJJRElFZUZrOUdwdDVRclVHd1pWc2d0emVadWJqYzFnQlBPb211clNiWllyL3dIYWlLMA"> <div><span>Kiwi-Stream-720p</span></div> </div> <div class="server" data-ep-id="130638" data-cmid="animixplay-fqsqfvdf4u" data-sv-id="xtp" data-link-id="MTF1dkFtaW9BRTZPbzJJRElFZUZrMHY3MWovMWJmd3ViVnI4VkxHL3AxdXFQYnNKZmtNUkdkTU44U004R0VOaQ"> <div><span>Kiwi-Stream-1080p</span></div> </div> <div class=""> <div><i class="las la-download"></i> <span onclick="openDownloadModalDownload(event, this)" download-data="eyJLaXdpLVN0cmVhbSI6eyJLaXdpLVN0cmVhbS0zNjBwIjoiaHR0cHM6Ly9wYWhlLm1ld2Nkbi5vbmxpbmUvYWJkdXciLCJLaXdpLVN0cmVhbS03MjBwIjoiaHR0cHM6Ly9wYWhlLm1ld2Nkbi5vbmxpbmUvbmJQcHkiLCJLaXdpLVN0cmVhbS0xMDgwcCI6Imh0dHBzOi8vcGFoZS5tZXdjZG4ub25saW5lL0FYeGx6In19">Download</span></div> </div></div></div></div></div>
+                    <div id="ani-seasons"></div>
+                    <div id="media-episode"><div class="head">
+        <div class="d-flex head-left">
+            <div class="dropdown limit-h"> <button class="btn dropdown-toggle range-view" data-toggle="dropdown" data-placeholder="false" href="#">
+                                            001-012
+                                        </button>
+                <div class="dropdown-menu range-options"> <a class="dropdown-item item active" href="javascript:;" data-value="001-012">
+                                            001-012
+                                        </a> </div>
+            </div>
+        </div>
+        <div class="d-flex">
+            <form class="ep-search"> <i class="bi bi-search"></i> <input class="form-control" type="text" placeholder="Find number"> </form>
+            <div class="lang-select">
+            <div data-value="sub" data-toggle="tooltip" title="" data-original-title="Show sub episodes" class="active">
+            <svg><use xlink:href="#icon-sub"></use></svg>
+        </div>
+            </div>
+        </div>
+    </div>
+    <div class="range-wrap"><div class="range" data-range="001-012" style=""><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-1" data-id="129742" title="Episode 1" data-num="Episode 1" data-mal="61549" data-timestamp="1767795009" data-slug="1" data-sub="1" data-dub="0" data-ids="amV6Nm1GcnAxTFNYVTQvZjQxOEk3ektpdURYK1JSOXVydEhnSDNwbmo2a0xkL0tRcDAwQUxLTHJ3OGlwRks0cVN5MWZSdjF4U052Tk85REZYQi9nWDd0bG9HRnVXRTBIZS8rOXZDaUQ1bDJmaEVaYVUwcGpZQUx1eW5SVDhkV1hPYVBSWDhWdVRlbVFlcGtvK0VJa1lnPT0" class="" enabled="1">
+                        1
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-2" data-id="129994" title="Episode 2" data-num="Episode 2" data-mal="61549" data-timestamp="1768399220" data-slug="2" data-sub="1" data-dub="0" data-ids="QWJWZ3ZqUnVtL2lBTFREYVlweDJFc2ZvK05MQUFyUVEyZGc4RDRWNndPdEU0OURXU3BXWEpKa1IxcmRCRUNkYWs5Vk1QbEpHbmM4THdTZFJXdUJMSW9tR3EyZnFCMzFZZE9BNlhYaW9EUnZVL1JlbXljdVRJdDJlZXlDK1J4UUhsR1k3S3huUVl1d3FuLzY4OFk5M0xRPT0" class="" enabled="1">
+                        2
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-3" data-id="130224" title="Episode 3" data-num="Episode 3" data-mal="61549" data-timestamp="1769003423" data-slug="3" data-sub="1" data-dub="0" data-ids="S3FXMXBzNDFhOHNpaElSQ0RweWFqeG1qZi9rV0NDUS9LM3ViK1h4LzZpRjFkZmJKUlVvU2Q1aS9mbEJsQVB5ckVPMFF2dkRMY3lMUFZYNDdObW01QysxNE5Ta2VlMjU0SlhGM210bzBLUWZWVFZhb28yZjUyVmZkVUFvSnZXKzkwR0oxTWVlVHgzdElQNEFuYjNJb1NRPT0" class="" enabled="1">
+                        3
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-4" data-id="130403" title="Episode 4" data-num="Episode 4" data-mal="61549" data-timestamp="1769608215" data-slug="4" data-sub="1" data-dub="0" data-ids="ajhFQW05bTFkMTN5T0M3NUNGQ1lSbGIxT1BrZUIxeW01UEpQU2lkdGt1UkMrUjlERndqdFd5QmpvSDdveDRtVkNNaWQ0SmMxbHhGaUtPT2xOandyVHk0UERWREhuV0tST1pyZ2ZRUmY0TkE5S3o0cDlxa29FRitRRVQrN2l4YXl6RXhwOXc4SkVHUFhhV21JLzY1VDBBPT0" class="" enabled="1">
+                        4
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-5" data-id="130638" title="Episode 5" data-num="Episode 5" data-mal="61549" data-timestamp="1770213024" data-slug="5" data-sub="1" data-dub="0" data-ids="MkR1WFgvNCtFS0tHcVZCaER4MFA5WDZveHA3SFA1eWZJWThETFNha2xIeWlZVkRWMU9ubVBqd1cxN0JTam9SV0lVU2hEc3oxVnpzUjRPQS9WazkzbGJPcXdoN05GTTlMR3c5aFg3VFAyM0x6SkdjSXhkNVFLTGZVVm5QTDhMSUxFSG9TamJmRlhseER5eDN5SzN4ZHFBPT0" class="active" enabled="1">
+                        5
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-6" data-id="130776" title="Episode 6" data-num="Episode 6" data-mal="61549" data-timestamp="1770818425" data-slug="6" data-sub="1" data-dub="0" data-ids="bmo5akI2TUdxNEQzSWZ5TVJCMjEva3NVSHBSMTV5cFZwQ01PdEZTNlpJMHRMdm1QdmRWemNKbDhDQmg2RXd2YUgwU0Q0T2ZjbkxFQm40SVN2aUlsc2ZPRWVaWFRPam91SHA0bUJjZGhodGl2bmNyZU03SWdhWkN5ZUozcTcrQ1JYZi8waUwxT3d6dHB3ekVEZjVWZ25BPT0" class="" enabled="1">
+                        6
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-7" data-id="130893" title="Episode 7" data-num="Episode 7" data-mal="61549" data-timestamp="1771422685" data-slug="7" data-sub="1" data-dub="0" data-ids="UXVQMkM4SFN2dWVUTDU0SWdscWFMVWdIc01IM0h0UnBtREErbzV3c1RqQldUUEc4Q2tPbk9tSXh5R29CZnFpMnJoaDdYSi80eHpTT1A3NnVibmdlbEZqL1kzNTdWYXgxTmIzcmlPellOek5OYUhWSjFITmpEcTlnSm55ZjdmWS81WlFGSG1temNiSEt2SVRhc0FPN2l3PT0" class="" enabled="1">
+                        7
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-8" data-id="131036" title="Episode 8" data-num="Episode 8" data-mal="61549" data-timestamp="1772028067" data-slug="8" data-sub="1" data-dub="0" data-ids="aVhMVjVuWEE0ek1kMHcxZFU2czlNbHVEejEranFFYUIrOGx4TEkwUXMxeWoyc0M4bFBhQlB3Qjh0TVJuSWFmS0xOMFZlaWJRTllxZ1lZZ1hZWDZIUmR2QVRqenBjN1JlQWJZVnlvOEU5VzhyR0hNaWZkVnIyMDRVNlFZOUhTTDIwdHpaM0UvMzR1L1pjUHRTNmRDQmVBPT0" class="" enabled="1">
+                        8
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-9" data-id="131158" title="Episode 9" data-num="Episode 9" data-mal="61549" data-timestamp="1772632221" data-slug="9" data-sub="1" data-dub="0" data-ids="Vjg0UWt3ZjZxR05UVHRtOE8xQXhJL0hOUGJvMm9ETFR4OVNZeTB0VzJUZEFuR2R2STJpSUgrRXNwVnQrbHlUdlgzRlZrUktKck5Mb2hPU21oeDRBbUZWM2VGcjM5eG1OUEdlNW1sWHNmRE9VNGlyeTBVR3VGb3kvNDFPRmJMbzd0RGVnMzFjMmFFcGw0Q1dMVHNkVGNnPT0" class="" enabled="1">
+                        9
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-10" data-id="131452" title="Episode 10" data-num="Episode 10" data-mal="61549" data-timestamp="1773237025" data-slug="10" data-sub="1" data-dub="0" data-ids="aWlxOUpEYTlYUzNJZTg4Z2l3bFZkMFZRMDJjUGJieHRjWjhWMDBmK3lLUGI3ZEh2T0JyVmgrbDlUa3E1bGxPbmNPMHl6VkNWSy8xQi95L2hSN2lXMTRjR0taWWc5UE1aMks4VWNUaTc2NEo0Z1dOYlVZK05ZZ21jYi9raHYrbGh1L1UwS1AzUHBqK2Z0bU9DbldHTkFnPT0" class="" enabled="1">
+                        10
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-11" data-id="131558" title="Episode 11" data-num="Episode 11" data-mal="61549" data-timestamp="1773842444" data-slug="11" data-sub="1" data-dub="0" data-ids="dG1XWlhiaWxjTUt6VVZvSE4rcENNYjIyc3hxcXd0clo4aitGS0NjcllOY0tOM0s0U3hLMHNHRTA4eWxESS9ZYmtIY04rbUVKTWJRZ1lWWVVYaktCZm5HNW1NNnJJdFo1S3JkbDdEV1hGcWIrV1pRNFdoK2tpb0F5WjlWdjJTZ2Nmd1ZzWDdYMUlIWUxCckFlQkhzbUxBPT0" class="" enabled="1">
+                        11
+                    </a>
+                </div><div>
+                    <a href="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-12" data-id="131647" title="Easygoing Territory Defense by the Optimistic Lord" data-num="Easygoing Territory Defense by the Optimistic Lord" data-mal="61549" data-timestamp="1774446626" data-slug="12" data-sub="1" data-dub="0" data-ids="M1hSa3FFdEsrT2VSd3h0VWlGRy93VC96S3FBYUJLcEtxMlYrb3NqRVdyRDRFbWUvbGZIdlczSkRERnFUTzRSSmdnT0hHdHpMUjV5cGU1U1IwbmthdTRsaFU1bGNGVzJQZHNDVWZicGtWTjNnbGhLbkNSQzlJZUppNCtRNURiSkYxeWpPdXpuRzc1bXhRU0FkRjNLUDBRPT0" class="" enabled="1">
+                        12
+                    </a>
+                </div></div> </div>
+    </div>
+                </section>
+                <div class="sharethis-inline-share-buttons mb-3 st-left st-has-labels st-hidden st-inline-share-buttons" data-url="https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi" id="st-1"><div class="st-total st-hidden">
+  <span class="st-label"></span>
+  <span class="st-shares">
+    Shares
+  </span>
+</div><div class="st-btn st-first  st-remove-label" data-network="facebook" style="display: none;">
+  <img alt="facebook sharing button" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/facebook.svg">
+  <span class="st-label">Share</span>
+</div><div class="st-btn  st-remove-label" data-network="twitter" style="display: none;">
+  <img alt="twitter sharing button" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/twitter.svg">
+  <span class="st-label">Post</span>
+</div><div class="st-btn  st-remove-label" data-network="messenger" style="display: none;">
+  <img alt="messenger sharing button" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/messenger.svg">
+  <span class="st-label">Share</span>
+</div><div class="st-btn  st-remove-label" data-network="reddit" style="display: none;">
+  <img alt="reddit sharing button" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/reddit.svg">
+  <span class="st-label">Share</span>
+</div><div class="st-btn  st-remove-label" data-network="whatsapp" style="display: none;">
+  <img alt="whatsapp sharing button" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/whatsapp.svg">
+  <span class="st-label">Share</span>
+</div><div class="st-btn  st-remove-label" data-network="telegram" style="display: none;">
+  <img alt="telegram sharing button" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/telegram.svg">
+  <span class="st-label">Share</span>
+</div><div class="st-btn st-last  st-remove-label" data-network="sharethis" style="display: inline-block;">
+  <img alt="sharethis sharing button" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/sharethis.svg">
+  <span class="st-label">Share</span>
+</div></div>
+                <div id="media-info">
+                    <div class="poster">
+                        <div class="wrap"> <span> <img itemprop="image" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/c9041cfd2a40932691855abd98fd219a.jpg" alt="Easygoing Territory Defense by the Optimistic Lord: Production Magic Turns a Nameless Village into the Strongest Fortified City"> </span> </div>
+                    </div>
+                    <div class="data">
+                        <div class="maindata">
+
+                            
+                                                            <p style="font-size: 12px;">
+                                    Okiraku Ryoushu no Tanoshii Ryouchi 
+Bouei: Seisankei Majutsu de Na mo Naki Mura wo Saikyou no Jousai Toshi 
+ni                                </p>
+                                <h1 itemprop="name" class="title" data-jp="Okiraku Ryoushu no Tanoshii Ryouchi Bouei: Seisankei Majutsu de Na mo Naki Mura wo Saikyou no Jousai Toshi ni">Okiraku Ryoushu no Tanoshii Ryouchi Bouei: Seisankei Majutsu de Na mo Naki Mura wo Saikyou no Jousai Toshi ni</h1>
+                            
+                            <div class="status">
+                                <span class="type mini-status">
+                                    TV                                </span>
+                                <span class="rating mini-status">
+                                    PG-13                                </span>
+                                <span class="quality mini-status">HD</span>
+                                <div class="dub-sub-total">
+                                    <span class="sub"><svg><use xlink:href="#icon-sub"></use></svg> 12 </span>                                    <span class="total">12</span>
+                                </div>
+                            </div>
+                            <div class="description cts-wrapper">
+                                <div class="short cts-block" data-name="short">
+                                    <div>
+                                        Van, the fourth son of a 
+powerful noble, is only two years old when he remembers his past life as
+ a salaryman in Japan. With...                                    </div> <button class="btn btn-sm btn-secondary2 my-2 border-secondary rounded-0 cts-switcher" data-target="full">more+</button>
+                                </div>
+                                <div class="full cts-block" data-name="full" style="display: none;">
+                                    <div>
+                                        Van, the fourth son of a 
+powerful noble, is only two years old when he remembers his past life as
+ a salaryman in Japan. With his adult brain in a young body, he's 
+considered a child prodigy...until he displays the "Production Magic" 
+skill when he turns eight. In a family that favors offensive magic, this
+ crafting skill is considered useless in battle, and Van is banished to 
+oversee a tiny country town in disgrace. With only his personal maid, 
+the memories of his past life, and his "worthless" magic, can Van 
+improve the fortunes of this little village—and himself?                
+                    </div> <button class="btn btn-sm btn-secondary2 my-2 border-secondary rounded-0 cts-switcher" data-target="short">less-</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="meta">
+                            <div>
+                                <div>Type:</div>
+                                <span>
+                                    TV                                </span>
+                            </div>
+                            <div>
+                                <div>Premiered:</div>
+                                <span>
+                                                                        <a href="https://anisuge.tv/filter?season[]=winter&amp;year[]=2026">
+                                        WINTER 2026                                    </a>
+
+                                </span>
+                            </div>
+                            <div>
+                                <div>Aired: </div>
+                                <span>
+                                    <span itemprop="dateCreated">
+                                        Jan 10, 2026 to ?                                    </span>
+                                </span>
+                            </div>
+                            <div>
+                                <div>Status:</div>
+                                <span> <a href="https://anisuge.tv/status/currently-airing">
+                                        Currently Airing                                    </a>
+                                </span>
+                            </div>
+                            <div>
+                                <div>MAL:</div>
+                                <span>
+                                    6.83                                </span>
+                            </div>
+                            <div>
+                                <div>Duration:</div>
+                                <span>
+                                    24m                                </span>
+                            </div>
+                            <div>
+                                <div>Episodes:</div> <span>
+                                    12                                </span>
+                            </div>
+                            <div>
+                                <div>Genre:</div>
+                                <span>
+                                                                                                                    <a href="https://anisuge.tv/genre/action">
+                                            Action                                        </a>
+                                                                        
+            ,
+                                                                        
+                                                                        
+            <a href="https://anisuge.tv/genre/adventure">
+                                            Adventure                                        </a>
+                                                                        
+            ,
+                                                                        
+                                                                        
+            <a href="https://anisuge.tv/genre/fantasy">
+                                            Fantasy                                        </a>
+                                                                        
+            ,
+                                                                        
+                                                                        
+            <a href="https://anisuge.tv/genre/comedy">
+                                            Comedy                                        </a>
+                                                                        
+            ,
+                                                                        
+                                                                        
+            <a href="https://anisuge.tv/genre/romance">
+                                            Romance                                        </a>
+                                                                        
+            ,
+                                                                        
+                                                                        
+            <a href="https://anisuge.tv/genre/drama">
+                                            Drama                                        </a>
+                                                                        
+            ,
+                                                                        
+                                                                        
+            <a href="https://anisuge.tv/genre/isekai">
+                                            Isekai                                        </a>
+                                                                                                            </span>
+                            </div>
+                            <div>
+                                <div>Studios:</div>
+                                <span>
+                                                                            <a itemprop="director" itemscope="" itemtype="https://schema.org/Person" href="https://anisuge.tv/studio/naz"><span itemprop="name">
+                                                NAZ                                            </span></a>
+                                                                                                            </span>
+                            </div>
+                            <div>
+                                <div>Producers:</div>
+                                <span>
+                                                                            <a itemprop="director" itemscope="" itemtype="https://schema.org/Person" href="https://anisuge.tv/producer/flying-dog"><span itemprop="name">
+                                                flying DOG                                            </span></a>
+                                                                                                            </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rating-box" itemprop="aggregateRating" itemscope="" itemtype="https://schema.org/AggregateRating" data-id="8552" data-score="6.83">
+                        <div class="stars">
+                            <span class="active"><i class="full"></i></span><span class="active"><i class="full"></i></span><span class="active"><i class="full"></i></span><span class="active"><i class="half"></i></span><span class=""><i class="none"></i></span>                        </div>
+                        <div class="scores live-label">
+                            <i class="las la-star"></i>
+                            <b itemprop="ratingValue" style="display:none">
+                                6.83                            </b>
+                            <b>
+                                6.83                            </b>/<b itemprop="bestRating">10</b>
+                            <span class="small text-muted"><span itemprop="reviewCount" style="display:none">
+                                    62221                                </span></span>
+                        </div>
+                    </div>
+                </div>
+                                <section class="block_area block_area-comment" id="comment-block">
+                    <div class="block_area-header block_area-header-tabs">
+                        <div class="float-left bah-heading mr-4">
+                            <h2 class="cat-heading">Comments</h2>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+
+                    <div class="text-center mt-5">
+                        <button id="load-comments-btn" class="btn btn-lg btn-secondary2 border-secondary1 rounded-0"><i class="las la-comment-alt"></i> Load Comments</button>
+                    </div>
+                    <div class="show-comments" style="display:none">
+                        <div id="content-comments" class="comments-wrap">
+                            <div class="loading-relative">
+                                <div class="loading">
+                                    <div class="span1"></div>
+                                    <div class="span2"></div>
+                                    <div class="span3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+            <aside class="side-panel">
+                                <section>
+                    <div class="top-section">
+                        <div class="heading">
+                            <h2 class="section-name">Recommended</h2>
+                        </div>
+                    </div>
+                    <div class="anime mini-card mt-4">
+
+                        
+                            <a class="item" href="https://anisuge.tv/watch/inuyasha-the-movie-2-the-castle-beyond-the-looking-glass-wm85q">
+                                <div class="poster tooltipstered" data-tip="367">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/2cfd4560539f887a5e420412b370b361.jpg" alt="InuYasha the Movie 2: The Castle Beyond the Looking Glass"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="InuYasha Movie 2: Kagami no Naka no Mugenjo">InuYasha Movie 2: Kagami no Naka no Mugenjo</p>
+                                    <div class="meta"> <span class="type">
+                                            MOVIE                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                                                                </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/inuyasha-the-movie-4-fire-on-the-mystic-island-f0kgu">
+                                <div class="poster tooltipstered" data-tip="541">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/540ae6b0f6ac6e155062f3dd4f0b2b01.jpg" alt="InuYasha the Movie 4: Fire on the Mystic Island"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="InuYasha Movie 4: Guren no Houraijima">InuYasha Movie 4: Guren no Houraijima</p>
+                                    <div class="meta"> <span class="type">
+                                            MOVIE                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                                                                </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/inuyasha-the-movie-affections-touching-across-time-fykpd">
+                                <div class="poster tooltipstered" data-tip="675">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/d10ec7c16cbe9de8fbb1c42787c3ec26.jpg" alt="InuYasha the Movie: Affections Touching Across Time"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="InuYasha Movie 1: Toki wo Koeru Omoi">InuYasha Movie 1: Toki wo Koeru Omoi</p>
+                                    <div class="meta"> <span class="type">
+                                            MOVIE                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                                                                </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/inuyasha-the-movie-3-swords-of-an-honorable-ruler-xb7al">
+                                <div class="poster tooltipstered" data-tip="1047">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/31839b036f63806cba3f47b93af8ccb5.jpg" alt="InuYasha the Movie 3: Swords of an Honorable Ruler"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="InuYasha Movie 3: Tenka Hadou no Ken">InuYasha Movie 3: Tenka Hadou no Ken</p>
+                                    <div class="meta"> <span class="type">
+                                            MOVIE                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                                                                </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/inuyasha-the-final-act-tlmux">
+                                <div class="poster tooltipstered" data-tip="1311">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/20f07591c6fcb220ffe637cda29bb3f6.jpg" alt="InuYasha: The Final Act"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="InuYasha: Kanketsu-hen">InuYasha: Kanketsu-hen</p>
+                                    <div class="meta"> <span class="type">
+                                            TV                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                         <span class="total">26</span>                                        </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/spirit-chronicles-ur0vs">
+                                <div class="poster tooltipstered" data-tip="6779">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/c8c3924a3385b6c14b4420f557b60608.jpg" alt="Spirit Chronicles"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="Seirei Gensouki">Seirei Gensouki</p>
+                                    <div class="meta"> <span class="type">
+                                            TV                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                         <span class="total">12</span>                                        </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/even-given-the-worthless-appraiser-class-i-m-actually-the-strongest-jekj1">
+                                <div class="poster tooltipstered" data-tip="7481">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/e0c4ac2b3663de42c0d23a34498a70bd.jpg" alt="Even Given the Worthless “Appraiser” Class, I’m Actually the Strongest"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="Even Given the Worthless “Appraiser” Class, I’m Actually the Strongest">Even Given the Worthless “Appraiser” Class, I’m Actually the Strongest</p>
+                                    <div class="meta"> <span class="type">
+                                            TV                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                         <span class="total">12</span>                                        </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/apocalypse-bringer-mynoghra-gd4uq">
+                                <div class="poster tooltipstered" data-tip="7943">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/074596f2944ba2b35e080177d533733d.jpg" alt="Apocalypse Bringer Mynoghra"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="Isekai Mokushiroku Mynoghra: Hametsu no Bunmei de Hajimeru Sekai Seifuku">Isekai Mokushiroku Mynoghra: Hametsu no Bunmei de Hajimeru Sekai Seifuku</p>
+                                    <div class="meta"> <span class="type">
+                                            TV                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                         <span class="total">13</span>                                        </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/inuyasha-9hqmq">
+                                <div class="poster tooltipstered" data-tip="972">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/df263d996281d984952c07998dc54358.jpg" alt="InuYasha"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="InuYasha">InuYasha</p>
+                                    <div class="meta"> <span class="type">
+                                            TV                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                         <span class="total">167</span>                                        </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                        
+                            <a class="item" href="https://anisuge.tv/watch/mysterious-play-yyobi">
+                                <div class="poster tooltipstered" data-tip="409">
+                                    <div><img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/55b1927fdafef39c48e5b73b5d61ea60.jpg" alt="Mysterious Play"></div>
+                                </div>
+                                <div class="detail">
+                                    <p class="name" data-jp="Fushigi Yuugi">Fushigi Yuugi</p>
+                                    <div class="meta"> <span class="type">
+                                            TV                                        </span>
+
+                                        <span class="dub-sub-total">
+
+                                                                                         <span class="total">52</span>                                        </span>
+
+                                    </div>
+                                </div>
+                            </a>
+                                            </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+</main>
+
+<div class="modal fade" id="downloadModal" style="z-index: 99999 !important;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Download Options</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body" id="downloadModalBody">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        
+<div class="container">
+    <footer>
+        <div class="go-to-top d-flex justify-content-center border-secondary border-bottom pb-3 mb-4">
+            <button id="go-top">
+                <i class="las la-angle-up"></i> Back to top
+            </button>
+        </div>
+        <div class="top-links">
+                                <a href="https://anisuge.tv/">
+                        Home                    </a>
+                                    <a href="https://anisuge.tv/pages/dmca">
+                        DMCA                    </a>
+                                    <a href="https://anisuge.tv/pages/terms">
+                        Terms of Use                    </a>
+                                    <a href="https://anisuge.tv/contact">
+                        Contact                    </a>
+                        </div>
+        <div class="bottom-info row">
+            <div class="col-lg-5">
+                <span class="footer-logo">
+                                        <img src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/logo.png" alt="Animesuge">                </span>
+                <span class="small text-muted">Copyright ©
+                    anisuge.tv. All Rights Reserved
+                </span>
+            </div>
+            <div class="col-lg-7">
+                <div class="small text-muted">
+                    <!-- warning do not remove it  -->
+                    <div id="cc">Made with <i class="las la-heart text-primary"></i> for anime
+                        users!</div>
+                </div>
+                <div class="small text-muted">
+                    Disclaimer: This site does not store any files on its server.
+                    All contents are provided by non-affiliated third parties.
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+</div>
+<aside id="schedule-section">
+    <div class="schedule-top">
+        <div class="close"><i class="las la-times"></i></div>
+        <div class="present"><time>05:31:22</time> <span>GMT+7</span></div>
+        <p>Release time is estimated</p>
+        <button id="schedule-btn" class="btn btn-primary rounded-0 toggle-schedule">
+            <span>Schedule</span><i class="las la-calendar-week"></i>
+        </button>
+    </div>
+    <div class="schedule-mid"></div>
+</aside>
+  <div class="modal fade" id="sign">
+    <div class="modal-dialog limit-w modal-dialog-centered cts-wrapper">
+      <div class="modal-content bg cts-block" data-name="signin">
+        <div class="modal-close" data-dismiss="modal">
+          <i class="las la-times"></i>
+        </div>
+        <h4 class="text-major">Welcome back!</h4>
+        <p class="text-muted">
+          The best site for watching anime online, completely free!
+        </p>
+        <form method="post" accept-charset="utf-8" class="ajax-login" data-broadcast="user:updated" id="ajax-login" action="/auth/ajax/login"><div style="display:none;"><input type="hidden" name="_method" value="POST"></div>        <div class="form-group mt-3">
+          <div class="form-group text  required"><label for="username">Username</label><input type="text" name="username" class="form-control form-control-lg" placeholder="Username or email" required="required" id="username"><span class="help-block"></span></div>        </div>
+
+        <div class="form-group mb-3">
+          <div class="form-group password  required"><label for="password">Password</label><input type="password" name="password" class="form-control form-control-lg" placeholder="Password" required="required" id="password"><span class="help-block"></span></div>        </div>
+        <div class="form-group row justify-content-end">
+          <div class="col-auto">
+            <input type="hidden" name="remember_me" value="0"><input type="checkbox" name="remember_me" value="1" class="custom-control-input" id="remember">            <label class="custom-control-label" for="remember">Remember me</label>          </div>
+        </div>
+        <div class="form-group d-flex justify-content-center mb-3">
+          <span class="captcha" data-theme="dark"></span>
+        </div>
+        <div class="text-center small">
+          <a class="cts-switcher" href="#" data-target="forgot">Forgot Your Password?</a>
+        </div>
+        <button class="btn-secondary2 text-uppercase btn-lg my-3 rounded-0 border btn w-100" type="submit">Login</button>        <div class="text-center  mb-3">
+          Don't have an account?
+          <a href="#" class="cts-switcher" data-target="signup">Register Now</a>
+        </div>
+        </form>        <div class="form-group">
+          <div class="desi-buttons">
+                          <form name="post_69fd0e6c0c11a550427120" style="display:none;" method="post" action="/social-auth/login/google"><input type="hidden" name="_method" value="POST"></form><a href="#" class="btn btn-slide-read mr-2" style="background-color: #d51c20; color: #ffffff !important;" onclick="document.post_69fd0e6c0c11a550427120.submit(); event.returnValue = false; return false;"><i class="fab fa-google"></i> Google</a>                                  </div>
+        </div>
+      </div>
+      <div class="modal-content bg cts-block" data-name="signup" style="display: none">
+        <div class="modal-close" data-dismiss="modal">
+          <i class="las la-times"></i>
+        </div>
+        <h4 class="text-major">Create an account</h4>
+        <p class="text-muted">Create an account to enjoy more features</p>
+        <form method="post" accept-charset="utf-8" id="register-form" class="ajax-register" data-broadcast="user:updated" action="/auth/ajax/register"><div style="display:none;"><input type="hidden" name="_method" value="POST"></div>        <div class="form-group mt-3">
+          <div class="form-group email  required"><label for="email">Email</label><input type="email" name="email" class="form-control form-control-lg" placeholder="Email" required="required" id="email"><span class="help-block"></span></div>        </div>
+        <div class="form-group">
+          <div class="form-group text  required"><label for="username">Username</label><input type="text" name="username" class="form-control form-control-lg" placeholder="Username" required="required" id="username"><span class="help-block"></span></div>        </div>
+        <div class="form-group mb-3">
+          <div class="form-group password  required"><label for="pass">Password</label><input type="password" name="password" class="form-control form-control-lg" placeholder="Password" required="required" id="pass"><span class="help-block"></span></div>        </div>
+        <div class="form-group mb-3">
+          <div class="form-group password  required"><label for="password-compare">Password Compare</label><input type="password" name="password_compare" class="form-control form-control-lg" placeholder="Password confirmation" required="required" id="password-compare"><span class="help-block"></span></div>        </div>
+        <div class="form-group d-flex justify-content-center mb-3">
+          <span class="captcha" data-theme="dark"></span>
+        </div>
+        <button class="btn-secondary2 text-uppercase btn-lg my-3 rounded-0 border btn w-100" type="submit">Sign Up</button>        <div class="text-center">
+          Already have an account?
+          <a href="#" class="cts-switcher" data-target="signin">Sign In</a>        </div>
+        </form>      </div>
+      <div class="modal-content bg cts-block" data-name="forgot" style="display: none">
+        <div class="modal-close" data-dismiss="modal">
+          <i class="las la-times"></i>
+        </div>
+        <h4 class="text-major">Forgot your password</h4>
+        <p class="text-muted">We will send an email if your account exists</p>
+        <form method="post" accept-charset="utf-8" class="ajax" id="forgot-form" action="/auth/ajax/reset-password"><div style="display:none;"><input type="hidden" name="_method" value="POST"></div>        <div class="form-group mt-3">
+          <div class="form-group email "><label for="email">Email</label><input type="email" name="email" class="form-control form-control-lg" placeholder="Email" id="email"><span class="help-block"></span></div>        </div>
+        <div class="form-group d-flex justify-content-center mb-3">
+          <span class="captcha" data-theme="dark"></span>
+        </div>
+        <button class="btn-secondary2 text-uppercase btn-lg my-3 rounded-0 border btn w-100" type="submit">Reset</button>        <div class="text-center">
+          Back to
+          <a href="#" class="cts-switcher" data-target="signin">Sign In</a>        </div>
+        </form>      </div>
+    </div>
+  </div>
+
+<script type="text/javascript">
+    /* <![CDATA[ */
+    var app_vars = {"base_url":"https:\/\/anisuge.tv\/","current_url":"https:\/\/anisuge.tv\/","language":"en_US","copy":"Copy","copied":"Copied!","user_id":null,"home_shortening_register":"no","enable_captcha":"no","captcha_type":"recaptcha","reCAPTCHA_site_key":"6LeHxV0qAAAAAKUiMDuR7g-AL5_sF7rz8hg8u52i","invisible_reCAPTCHA_site_key":"","hcaptcha_checkbox_site_key":"","solvemedia_challenge_key":"","captcha_short_anonymous":"0","captcha_shortlink":"yes","captcha_signin":"no","captcha_signup":"yes","captcha_forgot_password":"yes","captcha_contact":"no","counter_value":0,"counter_start":"DOMContentLoaded","get_link":"Get Link","getting_link":"Getting link...","skip_ad":"Skip Ad","force_disable_adblock":"0","please_disable_adblock":"Please disable Adblock to proceed to the destination page.","cookie_notification_bar":true,"cookie_message":"This website uses cookies to ensure you get the best experience on our website. <a href='https:\/\/anisuge.tv\/pages\/privacy' target='_blank'><b>Learn more<\/b><\/a>","cookie_button":"Got it!","disqus":"animixplay-fqsqfvdf4u"};
+    /* ]]> */
+</script>
+
+<script>
+ const now = new Date();
+ const cachebuster = now.toISOString().slice(0, 13).replace(/[-T:]/g, "");
+ const script = document.createElement("script");
+ script.type = "text/javascript";
+ script.src = `https://mewcdn.online/065e62ec90168c435ef226daedc8a572.js?h=${cachebuster}`;
+ document.head.appendChild(script);
+</script><script>var recaptchaSiteKey = '6LeHxV0qAAAAAKUiMDuR7g-AL5_sF7rz8hg8u52i';</script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/api.js"></script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/jquery.min.js"></script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/browser-polyfill.min.js"></script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/bootstrap.bundle.min.js"></script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/tooltipster.bundle.min.js"></script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/swiper.min.js"></script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/lazysizes.min.js"></script>
+<script type="text/javascript" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/sharethis.js" async="async"></script>
+<script src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/main.js"></script><div style="width: 100%; height: 100%; position: fixed; left: 0px; top: 0px; z-index: 43046721; background: rgb(0, 0, 0); opacity: 0.95; display: none;"></div><svg class="d-none">
+    <symbol id="icon-sub" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <path d="M98.1,16.9c0-1,0-2-0.2-2.9c-1.6-9.1-8.8-13.7-18-13.7c-13.9,0-19.9,0-33.8,0c-13.7,0-11.7,0-25.4,0 c-1.2,0-2.5,0-3.6,0.2C8,2,1.9,7.7,1.9,17c0,15.9,0,31.7,0,47.6c0,1,0,2.1,0.2,3.1c1.6,9.2,8.9,13.6,18.3,13.6c6.9,0,12.2,0,16.9,0 L47,98c1.3,2.3,4.7,2.3,6.1,0l9.7-16.7c4.6,0,10,0,16.8,0c1.2,0,2.4,0,3.5-0.2c9-1.6,15.1-7.3,15.1-16.4 C98.2,48.7,98.1,32.8,98.1,16.9z M12.6,51c-0.8-3.3-0.8-16.1-0.3-18.9c1.2-8.1,8.1-14.5,16.3-15.2c7.7-0.7,14,2,18.3,8.6 c2.6,3.9,0.2,8.8-4.4,9.3c-2.5,0.3-4.3-0.8-5.7-2.8c-2-2.8-5.3-3.8-8.5-2.7c-2.8,0.9-4.4,3.1-4.4,6c0,3.6,0,7.1,0,10.7 c0,3.3,1.5,5.6,4.5,6.5c3.1,1,6.4,0,8.2-2.5c1-1.4,2.1-2.5,3.8-2.9c2.4-0.6,4.9,0.3,6.4,2.2c1.5,2,1.6,4.6,0.3,6.7 c-2.8,4.4-6.7,7.1-11.7,8.3C25.3,66.7,14.8,60.7,12.6,51z M87.1,56c-2.8,4.4-6.7,7.1-11.7,8.3c-9.8,2.4-20.2-3.4-22.6-12.9 c-0.9-3.4-0.7-7.1-0.9-9.6c0.2-4.1,0-7.3,0.6-10.3c1.5-8.3,9-14.5,17.7-14.7c7-0.2,12.7,2.5,16.7,8.3c2.1,3,1.5,6.7-1.3,8.6 c-2.8,2-6.3,1.2-8.5-1.7c-2.3-3.1-6.2-4.1-9.5-2.4c-2.2,1.1-3.5,3-3.5,5.5c0,3.6,0,7.1,0,10.7c0,3.4,1.4,5.6,4.4,6.6 c3.1,1.1,6.4,0.1,8.3-2.5c1-1.4,2.1-2.5,3.8-2.9c2.4-0.6,4.9,0.3,6.4,2.2C88.3,51.2,88.4,53.9,87.1,56z"></path>
+    </symbol>
+    <symbol id="icon-dub" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <path d="M86.7,33.5c0-4.1-1.8-5.9-6-6c-0.9,0-6.8-0.1-14.5-0.1V16.3C66.3,7.3,59,0,50,0l0,0c-9,0-16.3,7.3-16.3,16.3 v11.2c-7.8,0-13.7,0-14.7,0.1c-4,0.1-5.8,2-5.8,6c0,7.2,0,7.1,0.1,14.3c0.1,9.7,3.9,16.9,10.5,23.9c5.1,5.5,11.6,8.9,19,10.5 c1.6,0.3,2.3,1,2.2,2.7c-0.1,2.5-0.1,0.7,0,3.2c0.1,1.7-0.6,2.4-2.3,2.4c-3.4-0.1-6.8-0.1-10.3,0c-3.4,0-5.5,1.9-5.5,4.8 c0,2.9,2.1,4.8,5.5,4.8c5.8,0,11.7,0,17.5,0c5.9,0,11.9,0,17.8,0c3.3,0,5.3-1.8,5.3-4.7c0-2.8-2.1-4.8-5.2-4.8 c-3.5-0.1-7-0.1-10.5,0c-1.7,0-2.4-0.5-2.4-2.3c0.1-2.3,0.2-0.3,0-2.7c-0.2-2.1,0.6-2.9,2.7-3.3c16.6-4,28.2-16.6,29-33 C86.9,41.5,86.7,41.1,86.7,33.5z M76.5,52.2C74.9,60,70.6,65,63.8,69.3c-17.2,11-39.7-0.6-40.9-20.9c-0.3-5.5-0.1-3.8-0.1-9.3 c0-1.5,0.5-2.1,2.1-2.1c1.6,0,4.8,0,8.8,0v10.8c0,9,7.3,16.3,16.3,16.3l0,0c9,0,16.3-7.3,16.3-16.3V36.9c2.9,0,4.9,0,5.3,0 c6.6,0.1,5.5-0.3,5.4,5.2C77,47.9,77.6,46.5,76.5,52.2z"></path>
+    </symbol>
+</svg>
+<script>
+    const mangaId = 8552;
+    const localStorageKey = 'manga_' + mangaId;
+    if (!localStorage.getItem(localStorageKey)) {
+        fetch('https://anisuge.tv/anime/getinfo/8552')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === true) {
+                    localStorage.setItem(localStorageKey, 'viewed');
+                } else {
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+</script>
+<script>
+    var loadedDownloadData = null; function openDownloadModal(a) { var o = a.getAttribute("download-data"); if (loadedDownloadData === o) $("#downloadModal").modal("show"); else { $("#downloadModalBody").html('<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div>'); try { var d = atob(o), l = JSON.parse(d), n = ""; l.forEach(function (a) { n += `<a class="btn ml-1 mt-1 guest btn-primary" href="${a.url}" target="_blank">${a.name}</a>` }), $("#downloadModalBody").html(n), $("#downloadModal").modal("show"), loadedDownloadData = o } catch (t) { $("#downloadModalBody").html("<p>Failed to get download links.</p>") } } }
+    function reloadIframe() { var e = document.getElementById("reloadIcon"), r = document.querySelector("#player iframe"); r && (e.classList.add("mdi-spin"), r.src = r.src, setTimeout(function () { e.classList.remove("mdi-spin") }, 1e3)) }
+</script>
+
+<script>
+    $(document).ready(function () {
+        $.getJSON(app_vars.base_url + "api/seasons/8552", function (e) {
+            if (e.status === 200 && e.result) {
+                console.log(e);
+                if (e.result.trim().length > 2) {
+                    $("#ani-seasons").html(e.result);
+                    order();
+                }
+            }
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            console.error("An error occurred:", errorThrown);
+        });
+    });
+</script>
+<script src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/mapper.js"></script><script src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/comment.js"></script><script>
+document.addEventListener("DOMContentLoaded",function(){window.watchlog,window.watchlog=function(e,t){var a=0;window.addEventListener("message",function(n){if("watching-log"===n.data.type&&e&&t){console.log("watching log");let i=Number(n.data.currentTime).toFixed(2),r=Number(n.data.duration).toFixed(2);if(i>0&&i!==a&&(a=i,Math.floor(new Date().getTime()/1e3)%60%10==0)){let s=localStorage.getItem("user.playing"),g=s?JSON.parse(s):{};g[e]=[t,i,r],localStorage.setItem("user.playing",JSON.stringify(g))}i!==r||1!==Number(localStorage.getItem("auto_next"))||isNextButtonClickInProgress||handleNextButtonClick()}});let n=window.addEventListener?"addEventListener":"attachEvent";window[n]("attachEvent"===n?"onmessage":"message",function(a){let n=a.data||a.message;try{if(n=JSON.parse(n),"megacloud"===n.channel&&"time"===n.event){let i=n.time,r=n.duration,s=localStorage.getItem("user.playing"),g=s?JSON.parse(s):{};g[e]=[t,i,r],localStorage.setItem("user.playing",JSON.stringify(g))}"megacloud"===n.channel&&"complete"===n.event&&1===Number(localStorage.getItem("auto_next"))&&handleNextButtonClick()}catch(o){console.error("Error processing message event:",o)}})}});
+</script>
+
+<script>
+(function(){let deferredPrompt,pwaPopupShown=localStorage.getItem("pwaPopupShown");if(!pwaPopupShown){const popup=document.createElement("div");popup.id="installPwaPopup",popup.style="position:fixed;bottom:20px;left:20px;right:20px;background-color:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.2);padding:20px;display:none;z-index:1000;max-width:400px;margin:0 auto;font-family:Arial,sans-serif;animation:slideUp 0.5s ease-in-out;",popup.innerHTML='<div style="display:flex;flex-direction:row;align-items:center;"><img src="/assets/images/favicon.png" alt="App Logo" style="width:60px;height:60px;border-radius:10px;margin-right:15px;"><div style="flex-grow:1;"><h2 style="margin:0;font-size:1.2em;color:#333;font-weight:600;">Install AnimeSuge</h2><p style="margin:5px 0;font-size:0.9em;color:#666;">Stream your favorite anime faster by installing our app!</p></div></div><div style="display:flex;justify-content:flex-end;margin-top:15px;"><button id="closePwaPopup" style="padding:8px 16px;background-color:transparent;border:1px solid #ccc;border-radius:5px;font-size:0.9em;color:#555;cursor:pointer;margin-right:10px;">Not Now</button><button id="installPwaButton" style="padding:8px 16px;background-color:#34a853;color:white;border:none;border-radius:5px;font-size:0.9em;cursor:pointer;">Install</button></div>',document.body.appendChild(popup);const style=document.createElement("style");style.textContent="@keyframes slideUp{from{transform:translateY(50px);opacity:0;}to{transform:translateY(0);opacity:1;}}",document.head.appendChild(style);const installPwaButton=document.getElementById("installPwaButton"),closePwaPopup=document.getElementById("closePwaPopup");window.addEventListener("beforeinstallprompt",e=>{e.preventDefault(),deferredPrompt=e,popup.style.display="block",installPwaButton.addEventListener("click",()=>{popup.style.display="none",deferredPrompt.prompt(),deferredPrompt.userChoice.then(e=>{"accepted"===e.outcome?console.log("User accepted the A2HS prompt"):console.log("User dismissed the A2HS prompt"),deferredPrompt=null})})}),closePwaPopup.addEventListener("click",()=>{popup.style.display="none"}),localStorage.setItem("pwaPopupShown","true")}})();
+</script>
+<script defer="defer" src="Easygoing%20Territory%20Defense%20by%20the%20Optimistic%20Lord_%20Production%20Magic%20Turns%20a%20Nameless%20Village%20into%20the%20Strongest%20Fortified%20City%20Episode%205%20English%20Subbed_Dubbed%20_%20Animesuge_files/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;67ede29e0967493badd56c21ceb9106e&quot;,&quot;r&quot;:1,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
+
+
+</body><div id="immersive-translate-browser-popup" style="all: initial"></div></html>

@@ -1,0 +1,378 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - text: 
+        - link "Animesuge" [ref=e7] [cursor=pointer]:
+          - /url: https://anisuge.tv/home
+          - img "Animesuge" [ref=e8]
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - link "Genres" [ref=e12] [cursor=pointer]:
+              - /url: javascript:;
+          - listitem [ref=e13]:
+            - link "Types" [ref=e14] [cursor=pointer]:
+              - /url: javascript:;
+          - listitem [ref=e15]:
+            - link "Updated" [ref=e16] [cursor=pointer]:
+              - /url: /latest-updated
+          - listitem [ref=e17]:
+            - link "Added" [ref=e18] [cursor=pointer]:
+              - /url: /new-release
+          - listitem [ref=e19]:
+            - link "Popular" [ref=e20] [cursor=pointer]:
+              - /url: /most-viewed
+          - listitem [ref=e21]:
+            - link "Completed" [ref=e22] [cursor=pointer]:
+              - /url: /status/finished-airing
+          - listitem [ref=e23]:
+            - link "Ongoing" [ref=e24] [cursor=pointer]:
+              - /url: /status/currently-airing
+          - listitem [ref=e25]:
+            - link "Upcoming" [ref=e26] [cursor=pointer]:
+              - /url: /status/not-yet-aired
+          - listitem [ref=e27]:
+            - link "Schedule" [ref=e28] [cursor=pointer]:
+              - /url: javascript:;
+          - listitem [ref=e29]:
+            - link "Random" [ref=e30] [cursor=pointer]:
+              - /url: /random
+        - generic [ref=e31] [cursor=pointer]:
+          - generic [ref=e32]: EN
+          - generic [ref=e33]: JP
+        - generic [ref=e34]:
+          - button "" [ref=e35] [cursor=pointer]:
+            - generic [ref=e36]: 
+          - generic:
+            - generic:
+              - generic [ref=e37]: 
+              - textbox "Search" [ref=e38]
+              - link "Filter" [ref=e39] [cursor=pointer]:
+                - /url: https://anisuge.tv/filter
+        - generic [ref=e366] [cursor=pointer]:
+          - generic [ref=e367]: 
+          - text: Sign In
+    - main [ref=e40]:
+      - generic [ref=e42]:
+        - complementary [ref=e43]:
+          - generic [ref=e44]:
+            - iframe [ref=e368]:
+              
+            - generic [ref=e52]:
+              - generic [ref=e53] [cursor=pointer]:
+                - generic [ref=e54]: 
+                - text: Auto Play
+              - generic [ref=e55] [cursor=pointer]:
+                - generic [ref=e56]: 
+                - text: Auto Next
+              - generic [ref=e57] [cursor=pointer]:
+                - generic [ref=e58]: 
+                - text: Auto Skip
+              - text:   
+              - generic [ref=e59] [cursor=pointer]:
+                - generic [ref=e60]: 
+                - generic [ref=e61]: Light
+              - generic [ref=e63] [cursor=pointer]:
+                - generic [ref=e369]: 
+                - generic [ref=e370]: Add Bookmark
+            - generic [ref=e66]:
+              - button "" [ref=e67] [cursor=pointer]:
+                - generic [ref=e68]: 
+              - text: Join Animesuge Anime Telegram
+              - link "@animesugetv" [ref=e69] [cursor=pointer]:
+                - /url: https://t.me/animesugetv
+            - generic [ref=e70]:
+              - button "" [ref=e71] [cursor=pointer]:
+                - generic [ref=e72]: 
+              - generic [ref=e73]: 
+              - text: The next episode is predicted to arrive on 2026/03/25 01:00 PM GMT (
+              - generic [ref=e74]: It's coming
+              - text: )
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - generic [ref=e77]: You are watching Episode 5
+                - generic [ref=e78]: (If the current server doesn't work, please try other servers beside.)
+              - generic [ref=e79]:
+                - generic [ref=e80]:
+                  - generic [ref=e82]:
+                    - img [ref=e83]
+                    - text: "Sub:"
+                  - generic [ref=e85]:
+                    - generic [ref=e88] [cursor=pointer]: Megaplay-1
+                    - generic [ref=e91] [cursor=pointer]: Vidwish-1
+                - generic [ref=e92]:
+                  - generic [ref=e94]:
+                    - img [ref=e95]
+                    - text: "H-SUB:"
+                  - generic [ref=e97]:
+                    - generic [ref=e100] [cursor=pointer]: Kiwi-Stream-360p
+                    - generic [ref=e103] [cursor=pointer]: Kiwi-Stream-720p
+                    - generic [ref=e106] [cursor=pointer]: Kiwi-Stream-1080p
+                    - generic [ref=e108] [cursor=pointer]:
+                      - generic [ref=e109]: 
+                      - generic [ref=e110]: Download
+            - generic [ref=e111]:
+              - generic [ref=e112]:
+                - button "001-012 " [ref=e115] [cursor=pointer]
+                - generic [ref=e116]:
+                  - textbox "Find number" [ref=e118]
+                  - img [ref=e121] [cursor=pointer]
+              - generic [ref=e124]:
+                - link "1" [ref=e126] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-1
+                - link "2" [ref=e128] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-2
+                - link "3" [ref=e130] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-3
+                - link "4" [ref=e132] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-4
+                - link "5" [ref=e134] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-5
+                - link "6" [ref=e136] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-6
+                - link "7" [ref=e138] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-7
+                - link "8" [ref=e140] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-8
+                - link "9" [ref=e142] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-9
+                - link "10" [ref=e144] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-10
+                - link "11" [ref=e146] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-11
+                - link "12" [ref=e148] [cursor=pointer]:
+                  - /url: https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-12
+          - generic [ref=e149]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: "35"
+              - generic [ref=e152]: Shares
+            - generic [ref=e153] [cursor=pointer]:
+              - img "facebook sharing button" [ref=e154]
+              - generic [ref=e155]: Share
+            - generic [ref=e156] [cursor=pointer]:
+              - img "twitter sharing button" [ref=e157]
+              - generic [ref=e158]: Post
+            - generic [ref=e159] [cursor=pointer]:
+              - img "messenger sharing button" [ref=e160]
+              - generic [ref=e161]: Share
+            - generic [ref=e162] [cursor=pointer]:
+              - img "reddit sharing button" [ref=e163]
+              - generic [ref=e164]: Share
+            - generic [ref=e165] [cursor=pointer]:
+              - img "whatsapp sharing button" [ref=e166]
+              - generic [ref=e167]: Share
+            - generic [ref=e168] [cursor=pointer]:
+              - img "telegram sharing button" [ref=e169]
+              - generic [ref=e170]: Share
+            - generic [ref=e171] [cursor=pointer]:
+              - img "sharethis sharing button" [ref=e172]
+              - generic [ref=e173]: Share
+          - generic [ref=e174]:
+            - 'img "Easygoing Territory Defense by the Optimistic Lord: Production Magic Turns a Nameless Village into the Strongest Fortified City" [ref=e178]'
+            - generic [ref=e179]:
+              - generic [ref=e180]:
+                - paragraph [ref=e181]: "Okiraku Ryoushu no Tanoshii Ryouchi Bouei: Seisankei Majutsu de Na mo Naki Mura wo Saikyou no Jousai Toshi ni"
+                - 'heading "Easygoing Territory Defense by the Optimistic Lord: Production Magic Turns a Nameless Village into the Strongest Fortified City" [level=1] [ref=e182]'
+                - generic [ref=e183]:
+                  - generic [ref=e184]: TV
+                  - generic [ref=e185]: PG-13
+                  - generic [ref=e186]: HD
+                  - generic:
+                    - generic:
+                      - img
+                      - text: "12"
+                    - generic: "12"
+                - generic [ref=e188]:
+                  - generic [ref=e189]: Van, the fourth son of a powerful noble, is only two years old when he remembers his past life as a salaryman in Japan. With...
+                  - button "more+" [ref=e190] [cursor=pointer]
+              - generic:
+                - generic [ref=e191]:
+                  - generic [ref=e192]: "Type:"
+                  - generic [ref=e193]: TV
+                - generic [ref=e194]:
+                  - generic [ref=e195]: "Premiered:"
+                  - link "WINTER 2026" [ref=e197] [cursor=pointer]:
+                    - /url: /filter?season[]=winter&year[]=2026
+                - generic [ref=e198]:
+                  - generic [ref=e199]: "Aired:"
+                  - generic [ref=e200]: Jan 10, 2026 to ?
+                - generic [ref=e201]:
+                  - generic [ref=e202]: "Status:"
+                  - link "Currently Airing" [ref=e204] [cursor=pointer]:
+                    - /url: https://anisuge.tv/status/currently-airing
+                - generic [ref=e205]:
+                  - generic [ref=e206]: "MAL:"
+                  - generic [ref=e207]: "6.83"
+                - generic [ref=e208]:
+                  - generic [ref=e209]: "Duration:"
+                  - generic [ref=e210]: 24m
+                - generic [ref=e211]:
+                  - generic [ref=e212]: "Episodes:"
+                  - generic [ref=e213]: "12"
+                - generic [ref=e214]:
+                  - generic [ref=e215]: "Genre:"
+                  - generic [ref=e216]:
+                    - link "Action" [ref=e217] [cursor=pointer]:
+                      - /url: https://anisuge.tv/genre/action
+                    - text: ","
+                    - link "Adventure" [ref=e218] [cursor=pointer]:
+                      - /url: https://anisuge.tv/genre/adventure
+                    - text: ","
+                    - link "Fantasy" [ref=e219] [cursor=pointer]:
+                      - /url: https://anisuge.tv/genre/fantasy
+                    - text: ","
+                    - link "Comedy" [ref=e220] [cursor=pointer]:
+                      - /url: https://anisuge.tv/genre/comedy
+                    - text: ","
+                    - link "Romance" [ref=e221] [cursor=pointer]:
+                      - /url: https://anisuge.tv/genre/romance
+                    - text: ","
+                    - link "Drama" [ref=e222] [cursor=pointer]:
+                      - /url: https://anisuge.tv/genre/drama
+                    - text: ","
+                    - link "Isekai" [ref=e223] [cursor=pointer]:
+                      - /url: https://anisuge.tv/genre/isekai
+                - generic [ref=e224]:
+                  - generic [ref=e225]: "Studios:"
+                  - link "NAZ" [ref=e227] [cursor=pointer]:
+                    - /url: https://anisuge.tv/studio/naz
+                - generic [ref=e228]:
+                  - generic [ref=e229]: "Producers:"
+                  - link "flying DOG" [ref=e231] [cursor=pointer]:
+                    - /url: https://anisuge.tv/producer/flying-dog
+            - generic [ref=e232]:
+              - generic [ref=e233]:
+                - generic [ref=e234] [cursor=pointer]:
+                  - generic: 
+                - generic [ref=e235] [cursor=pointer]:
+                  - generic: 
+                - generic [ref=e236] [cursor=pointer]:
+                  - generic: 
+                - generic [ref=e237] [cursor=pointer]:
+                  - generic:  
+                - generic [ref=e238] [cursor=pointer]:
+                  - generic:  
+              - generic [ref=e239]:
+                - generic [ref=e240]: 
+                - text: 6.83 /10
+          - generic [ref=e241]:
+            - heading "Comments" [level=2] [ref=e244]
+            - button " Load Comments" [ref=e246] [cursor=pointer]:
+              - generic [ref=e247]: 
+              - text: Load Comments
+        - complementary [ref=e248]:
+          - generic [ref=e249]:
+            - heading "Recommended" [level=2] [ref=e252]
+            - generic [ref=e253]:
+              - 'link "InuYasha the Movie 2: The Castle Beyond the Looking Glass InuYasha the Movie 2: The Castle Beyond the Looking Glass MOVIE" [ref=e254] [cursor=pointer]':
+                - /url: https://anisuge.tv/watch/inuyasha-the-movie-2-the-castle-beyond-the-looking-glass-wm85q
+                - 'img "InuYasha the Movie 2: The Castle Beyond the Looking Glass" [ref=e257]'
+                - generic [ref=e258]:
+                  - paragraph [ref=e259]: "InuYasha the Movie 2: The Castle Beyond the Looking Glass"
+                  - generic [ref=e261]: MOVIE
+              - 'link "InuYasha the Movie 4: Fire on the Mystic Island InuYasha the Movie 4: Fire on the Mystic Island MOVIE" [ref=e262] [cursor=pointer]':
+                - /url: https://anisuge.tv/watch/inuyasha-the-movie-4-fire-on-the-mystic-island-f0kgu
+                - 'img "InuYasha the Movie 4: Fire on the Mystic Island" [ref=e265]'
+                - generic [ref=e266]:
+                  - paragraph [ref=e267]: "InuYasha the Movie 4: Fire on the Mystic Island"
+                  - generic [ref=e269]: MOVIE
+              - 'link "InuYasha the Movie: Affections Touching Across Time InuYasha the Movie: Affections Touching Across Time MOVIE" [ref=e270] [cursor=pointer]':
+                - /url: https://anisuge.tv/watch/inuyasha-the-movie-affections-touching-across-time-fykpd
+                - 'img "InuYasha the Movie: Affections Touching Across Time" [ref=e273]'
+                - generic [ref=e274]:
+                  - paragraph [ref=e275]: "InuYasha the Movie: Affections Touching Across Time"
+                  - generic [ref=e277]: MOVIE
+              - 'link "InuYasha the Movie 3: Swords of an Honorable Ruler InuYasha the Movie 3: Swords of an Honorable Ruler MOVIE" [ref=e278] [cursor=pointer]':
+                - /url: https://anisuge.tv/watch/inuyasha-the-movie-3-swords-of-an-honorable-ruler-xb7al
+                - 'img "InuYasha the Movie 3: Swords of an Honorable Ruler" [ref=e281]'
+                - generic [ref=e282]:
+                  - paragraph [ref=e283]: "InuYasha the Movie 3: Swords of an Honorable Ruler"
+                  - generic [ref=e285]: MOVIE
+              - 'link "InuYasha: The Final Act InuYasha: The Final Act TV 26" [ref=e286] [cursor=pointer]':
+                - /url: https://anisuge.tv/watch/inuyasha-the-final-act-tlmux
+                - 'img "InuYasha: The Final Act" [ref=e289]'
+                - generic [ref=e290]:
+                  - paragraph [ref=e291]: "InuYasha: The Final Act"
+                  - generic [ref=e292]:
+                    - generic [ref=e293]: TV
+                    - generic:
+                      - generic: "26"
+              - link "Spirit Chronicles Spirit Chronicles TV 12" [ref=e294] [cursor=pointer]:
+                - /url: https://anisuge.tv/watch/spirit-chronicles-ur0vs
+                - img "Spirit Chronicles" [ref=e297]
+                - generic [ref=e298]:
+                  - paragraph [ref=e299]: Spirit Chronicles
+                  - generic [ref=e300]:
+                    - generic [ref=e301]: TV
+                    - generic:
+                      - generic: "12"
+              - link "Even Given the Worthless “Appraiser” Class, I’m Actually the Strongest Even Given the Worthless “Appraiser” Class, I’m Actually the Strongest TV 12" [ref=e302] [cursor=pointer]:
+                - /url: https://anisuge.tv/watch/even-given-the-worthless-appraiser-class-i-m-actually-the-strongest-jekj1
+                - img "Even Given the Worthless “Appraiser” Class, I’m Actually the Strongest" [ref=e305]
+                - generic [ref=e306]:
+                  - paragraph [ref=e307]: Even Given the Worthless “Appraiser” Class, I’m Actually the Strongest
+                  - generic [ref=e308]:
+                    - generic [ref=e309]: TV
+                    - generic:
+                      - generic: "12"
+              - link "Apocalypse Bringer Mynoghra Apocalypse Bringer Mynoghra TV 13" [ref=e310] [cursor=pointer]:
+                - /url: https://anisuge.tv/watch/apocalypse-bringer-mynoghra-gd4uq
+                - img "Apocalypse Bringer Mynoghra" [ref=e313]
+                - generic [ref=e314]:
+                  - paragraph [ref=e315]: Apocalypse Bringer Mynoghra
+                  - generic [ref=e316]:
+                    - generic [ref=e317]: TV
+                    - generic:
+                      - generic: "13"
+              - link "InuYasha InuYasha TV 167" [ref=e318] [cursor=pointer]:
+                - /url: https://anisuge.tv/watch/inuyasha-9hqmq
+                - img "InuYasha" [ref=e321]
+                - generic [ref=e322]:
+                  - paragraph [ref=e323]: InuYasha
+                  - generic [ref=e324]:
+                    - generic [ref=e325]: TV
+                    - generic:
+                      - generic: "167"
+              - link "Mysterious Play Mysterious Play TV 52" [ref=e326] [cursor=pointer]:
+                - /url: https://anisuge.tv/watch/mysterious-play-yyobi
+                - img "Mysterious Play" [ref=e329]
+                - generic [ref=e330]:
+                  - paragraph [ref=e331]: Mysterious Play
+                  - generic [ref=e332]:
+                    - generic [ref=e333]: TV
+                    - generic:
+                      - generic: "52"
+    - contentinfo [ref=e335]:
+      - button " Back to top" [ref=e337] [cursor=pointer]:
+        - generic [ref=e338]: 
+        - text: Back to top
+      - generic [ref=e339]:
+        - link "Home" [ref=e340] [cursor=pointer]:
+          - /url: https://anisuge.tv/
+        - link "DMCA" [ref=e341] [cursor=pointer]:
+          - /url: https://anisuge.tv/pages/dmca
+        - link "Terms of Use" [ref=e342] [cursor=pointer]:
+          - /url: https://anisuge.tv/pages/terms
+        - link "Contact" [ref=e343] [cursor=pointer]:
+          - /url: https://anisuge.tv/contact
+      - generic [ref=e344]:
+        - generic [ref=e345]:
+          - img "Animesuge" [ref=e347]
+          - text: Copyright © anisuge.tv. All Rights Reserved
+        - generic [ref=e348]:
+          - generic [ref=e350]:
+            - text: Made with
+            - generic [ref=e351]: 
+            - text: for anime users!
+          - generic [ref=e352]: "Disclaimer: This site does not store any files on its server. All contents are provided by non-affiliated third parties."
+  - complementary [ref=e353]:
+    - generic [ref=e354]:
+      - generic [ref=e356] [cursor=pointer]: 
+      - generic [ref=e357]:
+        - time [ref=e358]: 01:25:43
+        - generic [ref=e359]: GMT+7
+      - paragraph [ref=e360]: Release time is estimated
+      - button "Schedule " [ref=e361] [cursor=pointer]:
+        - generic [ref=e362]: Schedule
+        - generic [ref=e363]: 
+  - text:   
