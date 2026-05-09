@@ -19,8 +19,6 @@
 
     // VTT content cache: URL → text content
     const vttCache = new Map();
-    // Blob URL → cleanup tracking
-    const blobUrls = new Set();
     let vttUrl = null;
     let vttContent = null;
 
@@ -29,70 +27,52 @@
         console.log(fullMsg);
     };
 
-    // --- ★ CORE FIX: Intercept bridge postMessage to swap VTT URLs with blob URLs ---
+    // --- ★ CORE FIX: Intercept bridge postMessage → swap VTT URL with data: URI ---
     // Immersive Translate injects a bridge script (imt-subtitles-inject) that hooks fetch/XHR
-    // and sends VTT URLs to the extension content script via postMessage.
-    // The extension's _fetchSubtitle then fetches the URL — but from the isolated content
-    // script world, external URLs fail CORS. We swap the URL for a same-origin blob: URL.
+    // and sends VTT URLs to the extension via postMessage.
+    // The extension's _fetchSubtitle then fetch()es the URL — but from the content script
+    // world, external URLs fail CORS. We replace the URL with a data: URI containing
+    // cached VTT content. Data URIs are self-contained strings → no cross-context issues.
     const _origPostMessage = unsafeWindow.postMessage.bind(unsafeWindow);
     const IM_BRIDGE_EVENT = 'imt-subtitle-inject';
 
-    // Also intercept addEventListener('message') to catch incoming bridge messages
-    // that the extension content script might send to trigger fetching
-    const _origAddEventListener = unsafeWindow.EventTarget.prototype.addEventListener;
-    unsafeWindow.EventTarget.prototype.addEventListener = function (type, listener, options) {
-        if (type === 'message') {
-            const origListener = listener;
-            listener = function (event) {
-                try {
-                    const msg = event.data;
-                    if (msg && typeof msg === 'object' && msg.eventType === IM_BRIDGE_EVENT) {
-                        // Check for VTT URLs in bridge messages received by page listeners
-                        const checkAndSwap = (obj) => {
-                            if (!obj || typeof obj !== 'object') return;
-                            for (const key of Object.keys(obj)) {
-                                const val = obj[key];
-                                if (typeof val === 'string' && val.includes('.vtt') && val.startsWith('http') && vttCache.has(val)) {
-                                    const blob = new Blob([vttCache.get(val)], { type: 'text/vtt; charset=utf-8' });
-                                    const blobUrl = URL.createObjectURL(blob);
-                                    blobUrls.add(blobUrl);
-                                    obj[key] = blobUrl;
-                                    log(`addEventListener/message: swapped VTT URL → blob`);
-                                    return;
-                                }
-                            }
-                        };
-                        checkAndSwap(msg.data);
-                    }
-                } catch (e) { /* silent */ }
-                return origListener.call(this, event);
-            };
-        }
-        return _origAddEventListener.call(this, type, listener, options);
+    // UTF-8 safe base64 encoder
+    const toDataUri = (text) => {
+        const b64 = btoa(encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+            String.fromCharCode(parseInt(p1, 16))));
+        return 'data:text/vtt;charset=utf-8;base64,' + b64;
     };
-    log('Bridge message interceptor active.');
 
-    // --- Safe postMessage hook for OUTGOING bridge messages ---
-    // The bridge script uses globalThis.postMessage() to send messages to the
-    // extension content script. We intercept only bridge messages and swap VTT URLs.
-    // Using shallow clone + known-field-only checks to avoid corrupting messages.
     unsafeWindow.postMessage = function (msg, targetOrigin, transfer) {
         try {
             if (msg && typeof msg === 'object' && msg.eventType === IM_BRIDGE_EVENT) {
                 const data = msg.data;
-                if (data && data.url && typeof data.url === 'string' &&
+                if (data && typeof data === 'object' && data.url && typeof data.url === 'string' &&
                     data.url.includes('.vtt') && data.url.startsWith('http') &&
                     vttCache.has(data.url)) {
-                    const blob = new Blob([vttCache.get(data.url)], { type: 'text/vtt; charset=utf-8' });
-                    const blobUrl = URL.createObjectURL(blob);
-                    // Shallow clone to avoid mutating original
-                    msg = { ...msg, data: { ...data, url: blobUrl } };
-                    log(`postMessage OUT: swapped VTT URL → blob:${blobUrl.substring(blobUrl.lastIndexOf('/'))}`);
+                    // Build data: URI — no blob objects, no cross-context issues
+                    const dataUri = toDataUri(vttCache.get(data.url));
+                    // Create clean plain-object clone (avoids XrayWrapper mutation issues)
+                    const cleanMsg = {};
+                    for (const k of Object.keys(msg)) {
+                        if (k === 'data') {
+                            const cleanData = {};
+                            for (const dk of Object.keys(data)) {
+                                cleanData[dk] = (dk === 'url') ? dataUri : data[dk];
+                            }
+                            cleanMsg[k] = cleanData;
+                        } else {
+                            cleanMsg[k] = msg[k];
+                        }
+                    }
+                    log(`postMessage: swapped VTT URL → data: URI (${dataUri.length} chars)`);
+                    return _origPostMessage(cleanMsg, targetOrigin || '*', transfer);
                 }
             }
         } catch (e) { /* pass through silently on any error */ }
         return _origPostMessage(msg, targetOrigin || '*', transfer);
     };
+    log('Bridge postMessage interceptor active (data: URI mode).');
 
     // --- 1. Anti-Debug ---
     const silenceDebugger = () => {
@@ -363,11 +343,4 @@
             icon.style.setProperty('visibility', 'visible', 'important');
         }
     }, 5000);
-
-    // --- 10. Blob URL cleanup ---
-    setInterval(() => {
-        blobUrls.forEach(url => {
-            try { URL.revokeObjectURL(url); blobUrls.delete(url); } catch (e) { }
-        });
-    }, 60000);
 })();
