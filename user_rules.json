@@ -8,14 +8,15 @@
   },
   {
     "id": "anisuge_megaplay_custom",
-    "matches": [
+    "matches.add": [
       "anisuge.tv",
       "megaplay.buzz"
     ],
     "isNativeVideo": true,
     "videoSelector": "video",
-    "subtitlesContainer": ".jw-captions, .jw-subtitles-text",
-    "injectBy": "auto",
+    "mainFrameMinTextCount": 0,
+    "mainFrameMinWordCount": 0,
+    "domCheckTimeout": 1,
     "autoEnabledBilingualSubtitles": true,
     "quickButtonRule": {
       "appendSelector": ".jw-controlbar-right-group"
