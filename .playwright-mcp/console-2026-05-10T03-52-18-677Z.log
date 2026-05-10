@@ -1,0 +1,42 @@
+[    1512ms] [LOG] %c
+██╗  ██╗██╗██╗      ██████╗      ██████╗ ██████╗ ██████╗ ███████╗
+██║ ██╔╝██║██║     ██╔═══██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝
+█████╔╝ ██║██║     ██║   ██║    ██║     ██║   ██║██║  ██║█████╗
+██╔═██╗ ██║██║     ██║   ██║    ██║     ██║   ██║██║  ██║██╔══╝
+██║  ██╗██║███████╗╚██████╔╝    ╚██████╗╚██████╔╝██████╔╝███████╗
+╚═╝  ╚═╝╚═╝╚══════╝ ╚═════╝      ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
+ color: #f4e04d; font-size: 16px; font-weight: bold; font-family: monospace; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c🚀 Hey developer! 👋 color: #f4e04d; font-size: 18px; font-weight: bold; margin-top: 10px; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c
+Looks like you're curious about what's under the hood... color: #888; font-size: 13px; font-family: system-ui; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c
+Want AI coding superpowers in your terminal? color: #888; font-size: 13px; font-family: system-ui; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c
+Install Kilo Code CLI now: color: #fff; font-size: 14px; font-weight: bold; margin-top: 8px; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c npm install -g @kilocode/cli  background: #1a1a1a; color: #f4e04d; padding: 12px 16px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 14px; display: inline-block; margin: 8px 0; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c
+✨ Build smarter, ship faster, code better. color: #f4e04d; font-size: 14px; font-style: italic; margin-top: 8px; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c
+🔗 Learn more: %ckilo.ai/cli color: #888; font-size: 13px; font-family: system-ui; color: #f4e04d; font-size: 13px; font-family: system-ui; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ color: #333; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    1513ms] [LOG] %c
+P.S. We see you checking the console. You're our kind of person. 😎 color: #888; font-size: 12px; font-style: italic; @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
+[    3286ms] [ERROR] Access to fetch at 'https://app.kilo.ai/users/sign_in' (redirected from 'https://kilo.ai/api/impact/redirect?target=https%3A%2F%2Fapp.kilo.ai%2Fusers%2Fsign_in&_rsc=3lb4g') from origin 'https://kilo.ai' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://kilo.ai/:0
+[    3286ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://app.kilo.ai/users/sign_in:0
+[    3287ms] [ERROR] Failed to fetch RSC payload for https://kilo.ai/api/impact/redirect?target=https%3A%2F%2Fapp.kilo.ai%2Fusers%2Fsign_in. Falling back to browser navigation. TypeError: Failed to fetch (kilo.ai)
+    at https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:13:60209
+    at g (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:13:127943)
+    at _ (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:13:126757)
+    at https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:47536
+    at Object.o [as task] (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:13:44367)
+    at u.c (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:13:45072)
+    at u.enqueue (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:13:44497)
+    at c (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:47499)
+    at l (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:47015)
+    at i (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:16:13333)
+    at Object.prefetch (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:5924)
+    at https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:35875
+    at P (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:35910)
+    at E (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:35203)
+    at IntersectionObserver.rootMargin (https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:18:34212) @ https://kilo.ai/_next/static/chunks/9433-a4f21d59872c2866.js?dpl=dpl_E6VqSqTXcPyKwNWYYveqreuwoegH:1
