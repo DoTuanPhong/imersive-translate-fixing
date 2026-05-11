@@ -18,6 +18,7 @@
     "mainFrameMinWordCount": 0,
     "domCheckTimeout": 1,
     "autoEnabledBilingualSubtitles": true,
+    "attachRule": false,
     "quickButtonRule": {
       "appendSelector": ".jw-controlbar-right-group"
     },
