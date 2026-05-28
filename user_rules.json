@@ -1,34 +1,15 @@
 [
   {
-    "id": "youtube",
-    "quickButtonRule.add": {
-      "appendSelector": ".ytp-right-controls",
-      "insertBeforeSelector": ".ytp-right-controls-left"
-    }
-  },
-  {
-    "id": "anisuge_megaplay_custom",
+    "id": "common-vtt-jw",
     "matches.add": [
       "anisuge.tv",
-      "megaplay.buzz"
-    ],
-    "isNativeVideo": true,
-    "videoSelector": "video",
-    "mainFrameMinTextCount": 0,
-    "mainFrameMinWordCount": 0,
-    "domCheckTimeout": 1,
-    "autoEnabledBilingualSubtitles": true,
-    "attachRule": false,
-    "quickButtonRule": {
-      "appendSelector": ".jw-controlbar-right-group"
-    },
-    "sourceLanguageUrlPattern": {
-      "en": {
-        "matches": ["anisuge.tv", "megaplay.buzz"]
-      }
-    },
-    "additionalInjectedCss": [
-      ".immersive-translate-quick-button-container { filter: brightness(0) invert(1) !important; }"
+      "*.anisuge.tv",
+      "animesuge.cz",
+      "*.animesuge.cz",
+      "megaplay.buzz",
+      "*.megaplay.buzz",
+      "1anime.site",
+      "*.1anime.site"
     ]
   }
 ]

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(head -20)",
+      "Bash(python)"
+    ]
+  }
+}
