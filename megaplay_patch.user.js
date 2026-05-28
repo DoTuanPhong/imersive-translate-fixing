@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v10.5
+// @name         Megaplay.buzz Immersive Translate Fix v10.6
 // @namespace    http://tampermonkey.net/
-// @version      10.5
+// @version      10.6
 // @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
@@ -383,6 +383,132 @@
     }
 
     // ── 3. Utilities ──────────────────────────────────────────────────
+    const isEnglishVtt = (url) => {
+        if (!url || typeof url !== 'string') return false;
+        const u = url.toLowerCase();
+        return u.includes('english') || 
+               u.includes('/en/') || 
+               u.includes('/eng/') ||
+               u.includes('-en') ||
+               u.includes('_en') ||
+               u.includes('/en.vtt') ||
+               u.includes('_en.vtt') ||
+               u.includes('/eng.vtt') ||
+               u.includes('_eng.vtt') ||
+               /\beng?[-_0-9]/.test(u) ||
+               /\ben[-_0-9]/.test(u) ||
+               /\/eng?[-_0-9]/.test(u) ||
+               /\/en[-_0-9]/.test(u);
+    };
+
+    // ── 3.2 Hook jwplayer to prioritize English subtitles ───────────────
+    try {
+        const hookJwplayerInstance = (origJw) => {
+            if (typeof origJw !== 'function') return origJw;
+            log('Hooking jwplayer function.');
+            const hookJw = function (...args) {
+                const inst = origJw.apply(this, args);
+                if (inst && typeof inst.setup === 'function' && !inst._setupHooked) {
+                    inst._setupHooked = true;
+                    const origSetup = inst.setup;
+                    inst.setup = function (options, ...sArgs) {
+                        try {
+                            log('jwplayer setup options intercepted.');
+                            if (options && options.playlist && options.playlist[0] && options.playlist[0].tracks) {
+                                const tracks = options.playlist[0].tracks;
+                                const engTrackIndex = tracks.findIndex(t => {
+                                    const label = String(t.label || '').toLowerCase();
+                                    const file = String(t.file || '').toLowerCase();
+                                    return label.includes('english') || label.includes('eng') || file.includes('/en.vtt') || file.includes('_en.vtt') || file.includes('/eng.vtt') || file.includes('-en') || file.includes('_en') || /\beng?[-_0-9]/.test(file) || /\/eng?[-_0-9]/.test(file);
+                                });
+                                if (engTrackIndex !== -1) {
+                                    const engTrack = tracks[engTrackIndex];
+                                    log(`jwplayer hook: Found English VTT at index ${engTrackIndex}: ${engTrack.file}. Setting default=true.`);
+                                    tracks.forEach((t, idx) => {
+                                        if (idx === engTrackIndex) {
+                                            t.default = true;
+                                        } else if (t.file && t.file.includes('.vtt')) {
+                                            t.default = false;
+                                            delete t.default;
+                                        }
+                                    });
+                                    updateVttUrl(engTrack.file, 'jwplayer hook setup');
+                                }
+                            }
+                        } catch (e) {
+                            log(`Error in jwplayer setup hook: ${e.message}`);
+                        }
+                        
+                        const result = origSetup.apply(this, [options, ...sArgs]);
+
+                        // Force selecting English captions track on player ready
+                        try {
+                            inst.on('ready', () => {
+                                log('jwplayer ready event.');
+                                const captions = inst.getCaptionsList ? inst.getCaptionsList() : [];
+                                log('jwplayer captions list: ' + JSON.stringify(captions));
+                                const engIdx = captions.findIndex(c => {
+                                    const label = String(c.label || '').toLowerCase();
+                                    const id = String(c.id || '').toLowerCase();
+                                    return label.includes('english') || label.includes('eng') || id.includes('english') || id.includes('eng');
+                                });
+                                if (engIdx !== -1) {
+                                    log(`jwplayer ready: Setting captions to English (index ${engIdx})`);
+                                    inst.setCurrentCaptions(engIdx);
+                                }
+                            });
+                        } catch (e) {
+                            log(`Error setting up jwplayer ready listener: ${e.message}`);
+                        }
+
+                        return result;
+                    };
+                }
+                return inst;
+            };
+            Object.assign(hookJw, origJw);
+            hookJw.prototype = origJw.prototype;
+            return hookJw;
+        };
+
+        let currentJw = unsafeWindow.jwplayer || window.jwplayer;
+        if (currentJw) {
+            currentJw = hookJwplayerInstance(currentJw);
+            unsafeWindow.jwplayer = currentJw;
+        }
+        Object.defineProperty(unsafeWindow, 'jwplayer', {
+            get() {
+                return currentJw;
+            },
+            set(val) {
+                currentJw = hookJwplayerInstance(val);
+            },
+            configurable: true
+        });
+    } catch(e) {
+        log(`Failed to hook jwplayer: ${e.message}`);
+    }
+
+    const updateVttUrl = (url, source) => {
+        const norm = normalizeUrl(url);
+        if (!norm) return;
+        
+        if (!vttUrl) {
+            vttUrl = norm;
+            log(`VTT detected via ${source}: ${vttUrl}`);
+        } else if (isEnglishVtt(norm) && !isEnglishVtt(vttUrl)) {
+            vttUrl = norm;
+            log(`VTT upgraded to English via ${source}: ${vttUrl}`);
+            
+            // Reset fetchInProgress and vttText so we refetch the English VTT!
+            vttText = null;
+            cues = [];
+            setTimeout(() => {
+                fetchAndCacheVtt();
+            }, 100);
+        }
+    };
+
     const normalizeUrl = (url) => {
         if (!url || typeof url !== 'string') return url;
         try {
@@ -442,12 +568,22 @@
             return _origFetch.call(this, input, init);
         }
 
-        const urlStr = String(url);
+        let urlStr = String(url);
 
         // Discover VTT URLs
-        if (urlStr.includes('.vtt') && !vttUrl) {
-            vttUrl = normalizeUrl(urlStr);
-            log(`VTT detected via page fetch: ${vttUrl}`);
+        if (urlStr.includes('.vtt')) {
+            updateVttUrl(urlStr, 'page fetch');
+            // Redirect non-English VTT to English VTT
+            if (vttUrl && isEnglishVtt(vttUrl) && !isEnglishVtt(urlStr)) {
+                log(`Fetch redirect: non-English VTT → English VTT`);
+                log(`  from: ${urlStr.substring(0, 100)}`);
+                log(`  to:   ${vttUrl.substring(0, 100)}`);
+                if (typeof input === 'string') {
+                    input = vttUrl;
+                }
+                url = vttUrl;
+                urlStr = vttUrl;
+            }
         }
 
         // Delay VTT requests until IT hook is ready
@@ -527,8 +663,25 @@
                 try {
                     const inst = jw();
                     if (inst && inst.getPlaylist && inst.getPlaylist()[0] && inst.getPlaylist()[0].tracks) {
-                        inst.getPlaylist()[0].tracks.forEach(t => { if (t.file && t.file.includes('.vtt')) raw = t.file; });
-                        if (raw) log(`VTT from JW: ${raw}`);
+                        const tracks = inst.getPlaylist()[0].tracks.filter(t => t.file && t.file.includes('.vtt'));
+                        if (tracks.length > 0) {
+                            // Prioritize English track
+                            let selectedTrack = tracks.find(t => {
+                                const label = String(t.label || '').toLowerCase();
+                                const file = String(t.file || '').toLowerCase();
+                                return label.includes('english') || label.includes('eng') || file.includes('/en.vtt') || file.includes('_en.vtt') || file.includes('/eng.vtt') || file.includes('-en') || file.includes('_en');
+                            });
+                            // If no English track, look for default track
+                            if (!selectedTrack) {
+                                selectedTrack = tracks.find(t => t.default);
+                            }
+                            // Fallback to the first track
+                            if (!selectedTrack) {
+                                selectedTrack = tracks[0];
+                            }
+                            raw = selectedTrack.file;
+                            log(`VTT from JW: ${raw} (label: ${selectedTrack.label || 'none'})`);
+                        }
                     }
                 } catch (e) { }
             }
@@ -543,7 +696,7 @@
                 } catch (e) { }
             }
         }
-        if (raw) vttUrl = normalizeUrl(raw);
+        if (raw) updateVttUrl(raw, 'findVtt');
     };
 
     // XHR interceptor: detect VTT URLs and proxy them via GM_xmlhttpRequest
@@ -553,9 +706,16 @@
     ourXhrOpen = function (method, url, ...args) {
         this._url = url;
         this._method = method;
-        if (typeof url === 'string' && url.includes('.vtt') && !vttUrl) {
-            vttUrl = normalizeUrl(url);
-            log(`VTT via XHR open: ${vttUrl}`);
+        if (typeof url === 'string' && url.includes('.vtt')) {
+            updateVttUrl(url, 'XHR open');
+            // Redirect non-English VTT to English VTT
+            if (vttUrl && isEnglishVtt(vttUrl) && !isEnglishVtt(url)) {
+                log(`XHR open: Redirecting non-English VTT → English VTT`);
+                log(`  from: ${url.substring(0, 100)}`);
+                log(`  to:   ${vttUrl.substring(0, 100)}`);
+                this._url = vttUrl;
+                return origOpen.apply(this, [method, vttUrl, ...args]);
+            }
         }
         return origOpen.apply(this, [method, url, ...args]);
     };
@@ -846,8 +1006,39 @@
                             fetchInfoUrl = fi?.input?.url || '';
                         } catch(e) {}
                     }
-                    const targetUrl = normalizeUrl(reqUrl) || normalizeUrl(fetchInfoUrl) || '';
-                    log(`requestSubtitle intercepted (inject→cs): url=${targetUrl.substring(0, 80)}, id=${msg.id}, hasCache=${vttCache.has(targetUrl)}`);
+                    let targetUrl = normalizeUrl(reqUrl) || normalizeUrl(fetchInfoUrl) || '';
+
+                    // ── ENGLISH PRIORITY: Always redirect to English VTT if available ──
+                    // IT extension may request a non-English VTT URL (e.g. Japanese sub).
+                    // We override it with our pre-detected English VTT URL so translations
+                    // are always based on English source text.
+                    if (vttUrl && isEnglishVtt(vttUrl) && targetUrl && targetUrl.includes('.vtt') && !isEnglishVtt(targetUrl)) {
+                        log(`requestSubtitle: REDIRECTING non-English VTT → English VTT`);
+                        log(`  from: ${targetUrl.substring(0, 100)}`);
+                        log(`  to:   ${vttUrl.substring(0, 100)}`);
+                        targetUrl = vttUrl;
+                    }
+
+                    log(`requestSubtitle intercepted (inject→cs): url=${targetUrl.substring(0, 100)}, id=${msg.id}, hasCache=${vttCache.has(targetUrl)}`);
+
+                    // ── Serve from pre-fetched English VTT text if available ──
+                    // If we already have the English VTT text cached from fetchAndCacheVtt(),
+                    // serve it immediately without needing to check vttCache Map.
+                    if (vttText && vttUrl && targetUrl === vttUrl) {
+                        event.stopImmediatePropagation();
+                        log(`requestSubtitle: Responding with pre-fetched English VTT (${vttText.length} bytes).`);
+                        const replyMsg = {
+                            eventType: IM_BRIDGE_EVENT,
+                            to: 'inject',
+                            from: 'content-script',
+                            type: 'requestSubtitle',
+                            data: vttText,
+                            id: msg.id,
+                            isAsync: true
+                        };
+                        unsafeWindow.postMessage(replyMsg, '*');
+                        return;
+                    }
 
                     // Check if we have this VTT cached
                     let cachedText = null;
@@ -1232,6 +1423,7 @@
     findVtt();
 
     const vttBootWatcher = setInterval(() => {
+        findVtt();
         if (vttUrl && !vttText && !fetchInProgress) {
             fetchAndCacheVtt();
         }
@@ -1240,7 +1432,7 @@
         }
     }, 1000);
 
-    log('v10.5 ready. Pure IT engine fix — no Google fallback.');
+    log('v10.6 ready. Pure IT engine fix — no Google fallback.');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
@@ -1303,12 +1495,24 @@
             // Receive VTT relay from iframe
             if (data && data.type === 'it-fix-vtt-relay') {
                 log(`VTT relayed from iframe: ${data.vttUrl?.substring(0, 80)}... (${data.vttText?.length || 0} bytes, ${data.cueCount} cues)`);
-                if (data.vttUrl && !vttUrl) {
-                    vttUrl = data.vttUrl;
+                const norm = normalizeUrl(data.vttUrl);
+                if (!vttUrl) {
+                    vttUrl = norm;
                     vttText = data.vttText;
                     vttCache.set(vttUrl, vttText);
                     cues = parseVTT(vttText);
                     log(`VTT from iframe cached: ${cues.length} cues.`);
+                    startITTranslationMonitor();
+                } else if (isEnglishVtt(norm) && !isEnglishVtt(vttUrl)) {
+                    vttUrl = norm;
+                    vttText = data.vttText;
+                    vttCache.set(vttUrl, vttText);
+                    cues = parseVTT(vttText);
+                    log(`VTT from iframe upgraded to English: ${cues.length} cues.`);
+                    
+                    // Reset translation state to monitor again
+                    itTranslationDetected = false;
+                    translatedCues = [];
                     startITTranslationMonitor();
                 }
             }
@@ -1421,5 +1625,5 @@
         setTimeout(iframePlayerCheck, 15000);
     }
 
-    log(`v10.5 initialization complete. isInIframe=${isInIframe}`);
+    log(`v10.6 initialization complete. isInIframe=${isInIframe}`);
 })();
