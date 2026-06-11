@@ -1,0 +1,38 @@
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Agent and temporary files
+.claude/
+.playwright-mcp/
+.kilo/
+.kilocode/
+
+# Buggy environment paths / junk folders
+%USERPROFILE%/
+
+# Node dependencies and build files
+node_modules/
+dist/
+build/
+*.log
+
+# Scraping/downloaded anime files and other temporary assets
+Easygoing Territory Defense by the Optimistic Lord_*
+anisuge*
+*.vtt
+anime_info.json
+immersive_translate_full_user_config
+
+# External independent tools/repos in workspace
+firefox-devtools-mcp/

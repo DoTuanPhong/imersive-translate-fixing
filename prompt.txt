@@ -1,0 +1,79 @@
+
+ROLE: Research assistant for Vietnamese-calligraphy DiT fine-tuning.
+
+CONTEXT (current state at 2026-05-31):
+- Base: ERNIE-Image 8B DiT + Mistral3 text encoder (byte-level BPE, distinct
+  clean tokens for all Vietnamese tone variants), FlowMatch scheduler.
+- LoRA: PiSSA(n_iter=4) + rsLoRA r=64/α=64 on DiT self_attention.*.
+- Loss: DiacriticMaskedFlowMatchSFTLoss(factor=10, bg_weight=1.0).
+- Diagnosis chain (all evidence-verified, NO hand-waving):
+  1. Probe layer-(-2) hidden states: centered-cos for ngã/sắc minimal pairs
+     = 0.637 (worst), while distinct words = 0.085. Tone signal exists at
+     per-token level (cos 0.34-0.75) but is ~3× weaker than word identity.
+     Embed-finetune of 333 VN token rows had ZERO effect on this.
+  2. V9 (append separate tone token, even at proper norm scale): DiT
+     reacts to token PRESENCE but IGNORES token CONTENT. Ablation A-C ≈
+     brush jitter. Injection POINT is the failure, not magnitude.
+  3. V9.2 (ADD tone bias to content-token hidden states): ablation A-C
+     decisive (wrong-tone draws different mark class). Scale sweep
+     0.05/0.10/0.20 of content-token norm: 0.10 = sweet spot (letters
+     preserved, ~5× append baseline). 0.20 overwrites letters
+     ("Vượng"→"Vụa"). 0.05 too weak.
+- Status: V9.2 full train @ scale 0.10 (single-word span) is the next
+  immediate experiment; results pending.
+
+HARD CONSTRAINTS (non-negotiable — derived from prior incidents):
+- NO OCR-based rewards/losses (user constraint).
+- NO 7B+ VLM in the pipeline (GPU memory).
+- NO hallucinated repos. **Since you may lack real-time web verification, provide the exact arXiv ID, paper title, and standard GitHub URL/author repo name based on your training data. I WILL MANUALLY VERIFY EVERY LINK. Do not invent commit hashes; just give the expected repo path.**
+- NO multi-font augmentation yet (1 font not converged).
+- NO dataset regeneration (must use existing 7800-image capital-first set).
+- Visual manual check on ablation A/B/C (correct/zero/wrong, same seed)
+  is the mandatory gate; pixel-diff A-C alone is NOT evidence — high A-C
+  can mean tone-control OR bias-overwrites-everything chaos.
+- Convert any "this paper does X" claim into: **paper id/title + section + line + expected code repo**. Anything I can't verify is treated as fabricated.
+
+RESEARCH QUESTIONS (rank by ROI, ≤7 days implementation each):
+
+A. Conditional on V9.2 full train POSITIVE (tone accuracy improves):
+   1. Per-syllable span alignment for multi-word prompts ("An Khang
+      Thịnh Vượng" = 4 syllables → 7 BPE content tokens). Need a
+      principled syllable→token-span mapper for byte-level BPE, without
+      OCR. Survey: any 2024-2026 work on per-segment text-encoder
+      conditioning for DiT? CharTokenizer-style alignment papers?
+      *Domain relaxation: If no pure Vietnamese DiT alignment papers exist, search for state-of-the-art Chinese/Korean/Multilingual layout-conditioned DiT papers (2024-2026) that manipulate byte-level or char-level embeddings without OCR.*
+   2. Can the LEARNED tone embedding (E_tone, E_vmod) be initialized
+      from a known-good tone-classifier embedding instead of small-random,
+      to converge faster on the existing 14000 step budget?
+
+B. Conditional on V9.2 NEUTRAL (mark class right, but draw still wrong):
+   1. Glyph-image conditioning fallback: ControlNet/T2I-Adapter on DiT
+      with the diacritic-mask binary glyph as side input. Constraint:
+      must work on ERNIE-Image DiT topology (NOT SD/SDXL/Flux). Survey
+      DiT-compatible side-condition papers 2024-2026.
+   2. Tone-stratified mask: split current diacritic_mask into per-tone
+      channels (huyền/sắc/hỏi/ngã/nặng), apply loss factor per class.
+      Any published work on class-weighted regional losses for DiT?
+
+C. Conditional on V9.2 NEGATIVE (no change vs V8.7):
+   1. Re-examine injection point: is layer-(-2) the right hidden state
+      to add into, or does ERNIE-Image cross-attend from a different
+      layer? Need ERNIE-Image arch docs (verify against released code
+      in baidu/ERNIE-Image repo, NOT from blog posts).
+   2. Hard fallback: train a tiny aux head (≤50M params) that predicts
+      tone class from generated patches, used only as inference-time
+      reranker (NOT as reward — pure rerank over N samples). Survey
+      lightweight tone-classifier architectures.
+
+DELIVERABLE FORMAT (strict):
+For each question, return:
+- 3-5 candidate papers/methods, each with: **arXiv id, paper title, release date (approximate is fine), expected code URL, and a single-sentence "why this applies to my V9.2 add_span setup".**
+- 1 paragraph "what I'd try first" with concrete file/function to add
+  in experiments/scripts/.
+- 1 explicit "RED FLAGS / blockers" line per candidate (e.g. "requires
+  cross-attention rewrite — invasive", "OCR-dependent — REJECTED").
+
+DO NOT propose: scale/lr sweeps on V9.2 (already done), more data, more
+steps, multi-font, dataset regen, OCR, 7B+ VLM, unreleased code.
+
+If a paper looks promising but you are unsure if the repo is public, list it under "watch-list" only, NOT under "try first".

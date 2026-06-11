@@ -455,3 +455,74 @@ The user's Preact XrayWrapper fix (17 properties on Node.prototype) is **in the 
 1. Add `type: "text_track"` to user_rules.json
 2. If that doesn't work, focus on getting the VTT data to the extension via a mechanism that doesn't require modifying content script's Node.prototype
 3. Consider intercepting the actual translation call and feeding it the VTT data directly
+
+---
+
+## 13. Subtitle Fallback & Rate-Limit Optimization
+
+### 13.1 Rate Limit vs. Subtitle Group Size
+By default, the Immersive Translate extension configures a very small batch size for subtitle translation requests. For instance, for Gemini, `maxTextGroupLengthPerRequestForSubtitle` is set to `5` (or `8` in custom configurations). 
+For a typical anime episode containing ~400 lines:
+- IT breaks it into ~50 to 80 separate API requests.
+- Free API keys (e.g. Gemini 3.0 Flash Preview) have strict limits such as **5 RPM (Requests Per Minute)** and **20 RPD (Requests Per Day)**.
+- Within the first minute of translation, the API returns a `429 Too Many Requests` error once the 5 RPM limit is breached.
+
+#### Optimization Solution:
+Increase `maxTextGroupLengthPerRequestForSubtitle` and `maxTextGroupLengthPerRequest` to `80` (or `100`) in the service configuration:
+```json
+"maxTextGroupLengthPerRequestForSubtitle": "80",
+"maxTextGroupLengthPerRequest": "80",
+"maxTextLengthPerRequest": "280898"
+```
+This forces IT to group up to 80 subtitle lines into a single request. An entire anime episode now takes only 5-6 requests, avoiding the 5 RPM rate limit and providing the LLM with continuous context (greatly improving translation quality and pronoun consistency).
+
+### 13.2 Auto-Fallback Mechanism
+When the primary translation service (e.g. Gemini) returns an error (such as a 429 rate limit or 403 authorization error), the extension catches the error and silently falls back to a free service (e.g., Google/Bing Translate) listed in `defaultTranslationServicesOrder` to avoid showing error dialogs. This is why the user might experience a silent drop in translation quality without seeing any rate-limit error.
+
+The fallback service is resolved via:
+```javascript
+function md(e) {
+  return ss(e, e.rule.subtitleRule.defaultFallbackServices || [])[0];
+}
+```
+
+### 13.3 Configuring/Disabling Fallback in User Rules
+The fallback behavior can be configured or disabled completely via the user configuration JSON file:
+
+#### 1. Disabling Fallback Completely
+To force the translation to stop and show error details when the primary service fails:
+1. Define a dummy `"none"` service in `"translationServices"` to prevent IT's internal service filter from stripping it out:
+   ```json
+   "translationServices": {
+     "none": {
+       "visible": true
+     }
+   }
+   ```
+2. Assign `"none"` as the fallback service in the site rule's `"subtitleRule"`:
+   ```json
+   "rules": [
+     {
+       "id": "common-vtt-jw",
+       "subtitleRule": {
+         "defaultFallbackServices": ["none"]
+      }
+     }
+   ]
+   ```
+
+#### 2. Specifying a Custom Fallback Service (e.g., gemma-4-26b-a4b-it)
+To use a specific custom model or standard machine translator (like Google or Bing) as fallback:
+1. Locate the service ID (e.g., `"gemini-Pf0skLwy"` for the custom Gemma 4 model configuration, `"google-free"` for free Google Translate, or `"bing-free"` for free Bing).
+2. Set it in the `"defaultFallbackServices"` array in `"subtitleRule"`:
+   ```json
+   "rules": [
+     {
+       "id": "common-vtt-jw",
+       "subtitleRule": {
+         "defaultFallbackServices": ["gemini-Pf0skLwy"]
+       }
+     }
+   ]
+   ```
+   *(Note: Custom fallback services must contain a hyphen in their ID or be registered in `translationServices` with `"visible": true` to pass the extension's service validation filter).*

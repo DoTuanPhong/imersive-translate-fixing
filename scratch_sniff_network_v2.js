@@ -27,7 +27,7 @@ const puppeteer = require('puppeteer');
         }
     });
 
-    const url = 'https://anisuge.tv/watch/easygoing-territory-defense-by-the-optimistic-lord-production-magic-turns-a-nameless-village-into-the-strongest-fortified-city-v7zwi/ep-4';
+    const url = 'https://anisuge.tv/watch/spirit-chronicles-ur0vs/ep-7';
     console.log(`Navigating to ${url}...`);
     try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
