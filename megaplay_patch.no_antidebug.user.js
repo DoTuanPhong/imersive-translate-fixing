@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.1
+// @name         Megaplay.buzz Immersive Translate Fix v11.2 No Anti-Debug
 // @namespace    http://tampermonkey.net/
-// @version      11.1
-// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. No Google fallback.
+// @version      11.2
+// @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
 // @match        *://animesuge.cz/*
@@ -41,161 +41,6 @@
 
     log(`Script loaded. URL: ${location.href.substring(0, 120)}`);
 
-    // ── 0. Enhanced Anti-Debug (Chromium-optimized) ─────────────────
-    // Chromium's V8 allows redefining Function.prototype.toString
-    // to hide our hooks from detection by anti-debug scripts.
-    {
-        const win = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
-        const _origFunction = win.Function;
-        const _origEval = win.eval;
-        const _origSetInterval = win.setInterval;
-        const _origSetTimeout = win.setTimeout;
-        const _origRAF = win.requestAnimationFrame;
-
-        // Hook Function constructor — neutralizes `new Function('debugger')()`
-        const safeFnFactory = function (...args) {
-            const body = args[args.length - 1] || '';
-            if (typeof body === 'string' && /\bdebugger\b/i.test(body)) {
-                return function () { };
-            }
-            return _origFunction.apply(this, args);
-        };
-        safeFnFactory.prototype = _origFunction.prototype;
-        win.Function = safeFnFactory;
-        win.Function.prototype.constructor = safeFnFactory;
-
-        // Hook eval — blocks direct eval("debugger")
-        win.eval = function (code) {
-            if (typeof code === 'string' && /\bdebugger\b/i.test(code)) return undefined;
-            return _origEval.apply(this, arguments);
-        };
-
-        // Hook setInterval — blocks setInterval("debugger", ...)
-        win.setInterval = function (fn, delay, ...args) {
-            if (typeof fn === 'function' && fn.toString().includes('debugger')) return 0;
-            if (typeof fn === 'string' && /\bdebugger\b/i.test(fn)) return 0;
-            return _origSetInterval.apply(this, arguments);
-        };
-
-        // Hook setTimeout — blocks setTimeout("debugger", ...)
-        win.setTimeout = function (fn, delay, ...args) {
-            if (typeof fn === 'function' && fn.toString().includes('debugger')) return 0;
-            if (typeof fn === 'string' && /\bdebugger\b/i.test(fn)) return 0;
-            return _origSetTimeout.apply(this, arguments);
-        };
-
-        // Hook requestAnimationFrame — blocks RAF-based debugger loops
-        win.requestAnimationFrame = function (fn) {
-            if (typeof fn === 'function') {
-                const str = fn.toString();
-                if (str.includes('debugger')) return 0;
-                if (/\b(?:Function|constructor)\b/.test(str) && /\bdebugger\b/.test(str)) return 0;
-            }
-            return _origRAF.call(this, fn);
-        };
-
-        // --- Spoof Window dimensions to bypass size-based DevTools detection ---
-        try {
-            Object.defineProperty(win, 'outerWidth', {
-                get() { return win.innerWidth || 1024; },
-                configurable: true
-            });
-            Object.defineProperty(win, 'outerHeight', {
-                get() { return win.innerHeight || 768; },
-                configurable: true
-            });
-        } catch (e) {
-            log(`Failed to spoof window outer dimensions: ${e.message}`);
-        }
-
-        // --- Hook Console methods to neutralize console-based getters/RegExp toString detectors ---
-        const consoleMethods = ['log', 'warn', 'error', 'info', 'dir', 'table', 'trace', 'group', 'groupCollapsed', 'groupEnd'];
-        const _origConsole = {};
-        for (const method of consoleMethods) {
-            if (win.console && typeof win.console[method] === 'function') {
-                _origConsole[method] = win.console[method];
-                win.console[method] = function (...args) {
-                    const sanitizedArgs = args.map(arg => {
-                        if (arg === null || arg === undefined) return arg;
-                        // Avoid triggering getters on elements or custom objects
-                        if (arg instanceof HTMLElement) {
-                            return `[Element: ${arg.tagName.toLowerCase()}]`;
-                        }
-                        if (arg instanceof RegExp) {
-                            return '[RegExp]';
-                        }
-                        if (typeof arg === 'function') {
-                            return '[Function]';
-                        }
-                        if (typeof arg === 'object') {
-                            try {
-                                const descriptors = Object.getOwnPropertyDescriptors(arg);
-                                for (const key in descriptors) {
-                                    if (descriptors[key].get) {
-                                        return '[Object with Getters]';
-                                    }
-                                }
-                                if (Object.prototype.hasOwnProperty.call(arg, 'toString') || arg.toString !== Object.prototype.toString) {
-                                    return '[Object with custom toString]';
-                                }
-                            } catch (e) {
-                                return '[Unsafe Object]';
-                            }
-                        }
-                        return arg;
-                    });
-                    return _origConsole[method].apply(this, sanitizedArgs);
-                };
-            }
-        }
-
-        // --- Mask toString to hide all our hooks ---
-        const _origToString = Function.prototype.toString;
-        const NATIVE_STR = 'function () { [native code] }';
-        Function.prototype.toString = function () {
-            const fn = this;
-            if (fn === safeFnFactory || fn === win.Function || fn === win.eval) {
-                return NATIVE_STR;
-            }
-            if (fn === win.setInterval || fn === win.setTimeout ||
-                fn === win.requestAnimationFrame) {
-                return NATIVE_STR;
-            }
-            for (const method of consoleMethods) {
-                if (fn === win.console[method]) {
-                    return NATIVE_STR;
-                }
-            }
-            return _origToString.apply(this, arguments);
-        };
-
-        // --- Block console.clear to preserve our logs ---
-        try {
-            Object.defineProperty(win.console, 'clear', {
-                value: function () { },
-                writable: false,
-                configurable: false
-            });
-        } catch (e) {
-            try { win.console.clear = function () { }; } catch (e2) { }
-        }
-
-        // --- Block devtools detection via element.constructor ---
-        try {
-            const _origErrorPrepare = Error.prepareStackTrace;
-            Error.prepareStackTrace = function (err, stack) {
-                const filtered = stack.filter(entry => {
-                    try {
-                        return !String(entry).includes('debugger');
-                    } catch (e) { return true; }
-                });
-                if (filtered.length === 0) return '';
-                return _origErrorPrepare ? _origErrorPrepare(err, filtered) : String(filtered);
-            };
-        } catch (e) { }
-    }
-    log('Anti-debug active.');
-
     // ── 0.5 Preact XrayWrapper Fix (for Firefox content script) ──────
     try {
         const PREACT_DOM_PROPS = [
@@ -226,23 +71,6 @@
         log(`Preact XrayWrapper fix: ${PREACT_DOM_PROPS.length} properties pre-defined.`);
     } catch (e) {
         log(`Preact XrayWrapper patch error (non-fatal): ${e.message}`);
-    }
-
-    // ── 0.55 RegExp.prototype.test debug hook ──
-    try {
-        const origTest = RegExp.prototype.test;
-        RegExp.prototype.test = function (str) {
-            if (typeof str === 'string' && str.includes('.vtt')) {
-                log(`RegExp.test: regex=${this.toString()} str=${str.substring(0, 80)}`);
-                const res = origTest.call(this, str);
-                log(`  result: ${res}`);
-                return res;
-            }
-            return origTest.apply(this, arguments);
-        };
-        log('RegExp.prototype.test debug hook installed.');
-    } catch (e) {
-        log(`RegExp test hook error: ${e.message}`);
     }
 
     // ── 0.6 Monkey-patch TextTrackCue.prototype.innerHTML ──
@@ -1568,7 +1396,7 @@
         }
     }, 1000);
 
-    log('v11.1 ready. Pure IT engine fix — no Google fallback.');
+    log('v11.2 ready. Pure IT engine fix without anti-debug hooks — no Google fallback.');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
