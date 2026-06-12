@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.2 No Anti-Debug
+// @name         Megaplay.buzz Immersive Translate Fix v11.3 No Anti-Debug
 // @namespace    http://tampermonkey.net/
-// @version      11.2
+// @version      11.3
 // @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
@@ -13,6 +13,8 @@
 // @match        *://*.mewstream.buzz/*
 // @match        *://*.lostproject.club/*
 // @match        *://*.watching.onl*
+// @match        *://vidtube.site/*
+// @match        *://*.vidtube.site/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_webRequest
 // @grant        unsafeWindow
@@ -20,6 +22,8 @@
 // @connect      1oe.lostproject.club
 // @connect      watching.onl
 // @connect      *.watching.onl
+// @connect      mt.nekostream.site
+// @connect      *.mt.nekostream.site
 // @connect      *
 // ==/UserScript==
 
@@ -141,6 +145,20 @@
                         requestHeaders: [
                             { header: 'Referer', operation: 'set', value: 'https://vidwish.live/' },
                             { header: 'Origin', operation: 'set', value: 'https://vidwish.live' }
+                        ],
+                        responseHeaders: [
+                            { header: 'Access-Control-Allow-Origin', operation: 'set', value: '*' },
+                            { header: 'Access-Control-Allow-Methods', operation: 'set', value: 'GET, HEAD, OPTIONS' },
+                            { header: 'Access-Control-Allow-Headers', operation: 'set', value: '*' }
+                        ]
+                    }
+                },
+                {
+                    selector: { url: '*://mt.nekostream.site/*/subtitles/*.vtt*', types: ['xmlhttprequest', 'fetch'] },
+                    action: {
+                        requestHeaders: [
+                            { header: 'Referer', operation: 'set', value: 'https://vidtube.site/' },
+                            { header: 'Origin', operation: 'set', value: 'https://vidtube.site' }
                         ],
                         responseHeaders: [
                             { header: 'Access-Control-Allow-Origin', operation: 'set', value: '*' },
@@ -500,7 +518,7 @@
 
     // ── 3.5 Early window.fetch Override ───────────────────────────────
     // Intercepts VTT fetches to inject Referer/Origin headers via GM_xmlhttpRequest
-    const VTT_FETCH_REGEX = /(?:lostproject\.club|watching\.onl)\/.+\.vtt/i;
+    const VTT_FETCH_REGEX = /(?:lostproject\.club|watching\.onl|mt\.nekostream\.site)\/.+\.vtt/i;
     const _origFetch = unsafeWindow.fetch;
 
     ourFetchWrapper = function (input, init) {
@@ -1396,7 +1414,7 @@
         }
     }, 1000);
 
-    log('v11.2 ready. Pure IT engine fix without anti-debug hooks — no Google fallback.');
+    log('v11.3 ready. Pure IT engine fix without anti-debug hooks — no Google fallback.');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary

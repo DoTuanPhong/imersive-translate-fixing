@@ -8,8 +8,12 @@
       "*.animesuge.cz",
       "megaplay.buzz",
       "*.megaplay.buzz",
+      "vidwish.live",
+      "*.vidwish.live",
       "1anime.site",
-      "*.1anime.site"
+      "*.1anime.site",
+      "vidtube.site",
+      "*.vidtube.site"
     ]
   }
 ]
