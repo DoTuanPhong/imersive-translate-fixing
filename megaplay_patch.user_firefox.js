@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.1
+// @name         Megaplay.buzz Immersive Translate Fix v11.5
 // @namespace    http://tampermonkey.net/
-// @version      11.1
-// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. No Google fallback.
+// @version      11.5
+// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. Visual Console. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
 // @match        *://animesuge.cz/*
@@ -13,6 +13,8 @@
 // @match        *://*.mewstream.buzz/*
 // @match        *://*.lostproject.club/*
 // @match        *://*.watching.onl*
+// @match        *://vidtube.site/*
+// @match        *://*.vidtube.site/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_webRequest
 // @grant        unsafeWindow
@@ -20,6 +22,8 @@
 // @connect      1oe.lostproject.club
 // @connect      watching.onl
 // @connect      *.watching.onl
+// @connect      mt.nekostream.site
+// @connect      *.mt.nekostream.site
 // @connect      *
 // ==/UserScript==
 
@@ -28,12 +32,156 @@
 
     const isInIframe = (window !== window.top);
     const frameId = isInIframe ? `IFRAME:${location.hostname}` : 'TOP';
+
+    let visualConsoleContainer = null;
+    let visualConsoleBody = null;
+
+    const initVisualConsole = () => {
+        if (isInIframe || visualConsoleContainer) return;
+        if (!document.body) {
+            window.addEventListener('DOMContentLoaded', () => initVisualConsole());
+            return;
+        }
+
+        // Create container
+        visualConsoleContainer = document.createElement('div');
+        visualConsoleContainer.id = 'it-visual-console';
+        visualConsoleContainer.style.cssText = `
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 380px;
+            height: 250px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 2147483647;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 11px;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        `;
+
+        // Create header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            padding: 6px 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        `;
+        header.innerHTML = `
+            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.4</span>
+            <div>
+                <button id="it-btn-clear" style="background:none;border:none;color:#ff9800;cursor:pointer;margin-right:8px;font-size:10px;">Clear</button>
+                <span id="it-btn-toggle" style="color:#aaa;">▼</span>
+            </div>
+        `;
+
+        // Create body (log list)
+        visualConsoleBody = document.createElement('div');
+        visualConsoleBody.style.cssText = `
+            flex: 1;
+            padding: 8px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        `;
+
+        visualConsoleContainer.appendChild(header);
+        visualConsoleContainer.appendChild(visualConsoleBody);
+        document.body.appendChild(visualConsoleContainer);
+
+        // Toggle expand/collapse
+        let collapsed = false;
+        const toggle = () => {
+            collapsed = !collapsed;
+            if (collapsed) {
+                visualConsoleContainer.style.height = '30px';
+                visualConsoleContainer.style.width = '240px';
+                header.querySelector('#it-btn-toggle').textContent = '▲';
+                visualConsoleBody.style.display = 'none';
+            } else {
+                visualConsoleContainer.style.height = '250px';
+                visualConsoleContainer.style.width = '380px';
+                header.querySelector('#it-btn-toggle').textContent = '▼';
+                visualConsoleBody.style.display = 'flex';
+                visualConsoleBody.scrollTop = visualConsoleBody.scrollHeight;
+            }
+        };
+
+        header.addEventListener('click', (e) => {
+            if (e.target.id === 'it-btn-clear') {
+                visualConsoleBody.innerHTML = '';
+                return;
+            }
+            toggle();
+        });
+        
+        // Add CSS to style scrollbars
+        const style = document.createElement('style');
+        style.textContent = `
+            #it-visual-console ::-webkit-scrollbar { width: 6px; }
+            #it-visual-console ::-webkit-scrollbar-track { background: transparent; }
+            #it-visual-console ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+            #it-visual-console ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+        `;
+        document.head.appendChild(style);
+    };
+
+    const appendToVisualConsole = (msg, frameName) => {
+        if (isInIframe) return;
+        if (!visualConsoleContainer) {
+            initVisualConsole();
+        }
+        if (!visualConsoleBody) return;
+
+        const line = document.createElement('div');
+        line.style.cssText = 'line-height: 1.3; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px; word-break: break-all;';
+        
+        let color = '#fff';
+        if (msg.includes('ERROR') || msg.includes('FAILED') || msg.includes('Failed') || msg.includes('error')) color = '#ff5252';
+        else if (msg.includes('upgraded') || msg.includes('detected') || msg.includes('OK') || msg.includes('cached') || msg.includes('Active') || msg.includes('ACTIVE') || msg.includes('READY')) color = '#69f0ae';
+        else if (msg.includes('Delaying') || msg.includes('Safety timeout') || msg.includes('inactivity') || msg.includes('INACTIVE') || msg.includes('Resetting')) color = '#ffd740';
+
+        const prefix = frameName === 'TOP' ? '<span style="color:#00e5ff;">[TOP]</span>' : `<span style="color:#ff4081;">[${frameName}]</span>`;
+        line.innerHTML = `${prefix} <span style="color: ${color};">${msg}</span>`;
+        visualConsoleBody.appendChild(line);
+
+        while (visualConsoleBody.children.length > 40) {
+            visualConsoleBody.removeChild(visualConsoleBody.firstChild);
+        }
+        visualConsoleBody.scrollTop = visualConsoleBody.scrollHeight;
+    };
+
+    const win = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+    const _realConsoleLog = win.console ? win.console.log : null;
+
     const log = (msg) => {
-        console.log(`[IT-Fix][${frameId}] ${msg}`);
-        // If we're in an iframe, also relay logs to parent for visibility
+        if (_realConsoleLog) {
+            try {
+                _realConsoleLog.call(win.console, `[IT-Fix][${frameId}] ${msg}`);
+            } catch (e) { }
+        }
         if (isInIframe) {
             try {
                 window.parent.postMessage({ type: 'it-fix-log', frameId, msg }, '*');
+            } catch (e) { }
+        } else {
+            try {
+                appendToVisualConsole(msg, 'TOP');
             } catch (e) { }
         }
     };
@@ -45,12 +193,13 @@
     // Chromium's V8 allows redefining Function.prototype.toString
     // to hide our hooks from detection by anti-debug scripts.
     {
-        const win = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
         const _origFunction = win.Function;
         const _origEval = win.eval;
         const _origSetInterval = win.setInterval;
         const _origSetTimeout = win.setTimeout;
         const _origRAF = win.requestAnimationFrame;
+
+        const mockedFunctions = new Set();
 
         // Hook Function constructor — neutralizes `new Function('debugger')()`
         const safeFnFactory = function (...args) {
@@ -63,29 +212,39 @@
         safeFnFactory.prototype = _origFunction.prototype;
         win.Function = safeFnFactory;
         win.Function.prototype.constructor = safeFnFactory;
+        mockedFunctions.add(safeFnFactory);
+        mockedFunctions.add(win.Function);
 
         // Hook eval — blocks direct eval("debugger")
-        win.eval = function (code) {
-            if (typeof code === 'string' && /\bdebugger\b/i.test(code)) return undefined;
-            return _origEval.apply(this, arguments);
-        };
+        if (!isFirefox) {
+            const wrappedEval = function (code) {
+                if (typeof code === 'string' && /\bdebugger\b/i.test(code)) return undefined;
+                return _origEval.apply(this, arguments);
+            };
+            win.eval = wrappedEval;
+            mockedFunctions.add(wrappedEval);
+        }
 
         // Hook setInterval — blocks setInterval("debugger", ...)
-        win.setInterval = function (fn, delay, ...args) {
+        const wrappedSetInterval = function (fn, delay, ...args) {
             if (typeof fn === 'function' && fn.toString().includes('debugger')) return 0;
             if (typeof fn === 'string' && /\bdebugger\b/i.test(fn)) return 0;
             return _origSetInterval.apply(this, arguments);
         };
+        win.setInterval = wrappedSetInterval;
+        mockedFunctions.add(wrappedSetInterval);
 
         // Hook setTimeout — blocks setTimeout("debugger", ...)
-        win.setTimeout = function (fn, delay, ...args) {
+        const wrappedSetTimeout = function (fn, delay, ...args) {
             if (typeof fn === 'function' && fn.toString().includes('debugger')) return 0;
             if (typeof fn === 'string' && /\bdebugger\b/i.test(fn)) return 0;
             return _origSetTimeout.apply(this, arguments);
         };
+        win.setTimeout = wrappedSetTimeout;
+        mockedFunctions.add(wrappedSetTimeout);
 
         // Hook requestAnimationFrame — blocks RAF-based debugger loops
-        win.requestAnimationFrame = function (fn) {
+        const wrappedRAF = function (fn) {
             if (typeof fn === 'function') {
                 const str = fn.toString();
                 if (str.includes('debugger')) return 0;
@@ -93,6 +252,25 @@
             }
             return _origRAF.call(this, fn);
         };
+        win.requestAnimationFrame = wrappedRAF;
+        mockedFunctions.add(wrappedRAF);
+
+        // --- Mock window.close inside player iframe to prevent self-destruction loops ---
+        if (isInIframe) {
+            const noopClose = function () {
+                log('window.close() call blocked');
+            };
+            mockedFunctions.add(noopClose);
+            try {
+                Object.defineProperty(win, 'close', {
+                    value: noopClose,
+                    writable: true,
+                    configurable: true
+                });
+            } catch (e) {
+                win.close = noopClose;
+            }
+        }
 
         // --- Spoof Window dimensions to bypass size-based DevTools detection ---
         try {
@@ -109,43 +287,78 @@
         }
 
         // --- Hook Console methods to neutralize console-based getters/RegExp toString detectors ---
-        const consoleMethods = ['log', 'warn', 'error', 'info', 'dir', 'table', 'trace', 'group', 'groupCollapsed', 'groupEnd'];
-        const _origConsole = {};
-        for (const method of consoleMethods) {
-            if (win.console && typeof win.console[method] === 'function') {
-                _origConsole[method] = win.console[method];
-                win.console[method] = function (...args) {
-                    const sanitizedArgs = args.map(arg => {
-                        if (arg === null || arg === undefined) return arg;
-                        // Avoid triggering getters on elements or custom objects
-                        if (arg instanceof HTMLElement) {
-                            return `[Element: ${arg.tagName.toLowerCase()}]`;
-                        }
-                        if (arg instanceof RegExp) {
-                            return '[RegExp]';
-                        }
-                        if (typeof arg === 'function') {
-                            return '[Function]';
-                        }
-                        if (typeof arg === 'object') {
-                            try {
-                                const descriptors = Object.getOwnPropertyDescriptors(arg);
-                                for (const key in descriptors) {
-                                    if (descriptors[key].get) {
-                                        return '[Object with Getters]';
-                                    }
-                                }
-                                if (Object.prototype.hasOwnProperty.call(arg, 'toString') || arg.toString !== Object.prototype.toString) {
-                                    return '[Object with custom toString]';
-                                }
-                            } catch (e) {
-                                return '[Unsafe Object]';
+        const consoleMethods = [
+            'log', 'warn', 'error', 'info', 'dir', 'table', 'trace', 
+            'group', 'groupCollapsed', 'groupEnd', 'clear', 'assert', 
+            'count', 'countReset', 'time', 'timeEnd', 'timeLog', 
+            'timeStamp', 'profile', 'profileEnd'
+        ];
+        
+        if (isInIframe && win.console) {
+            // Inside player iframe: Neutralize all console calls completely to block timing/formatting detectors
+            for (const method of consoleMethods) {
+                if (typeof win.console[method] === 'function') {
+                    const noop = function () { };
+                    mockedFunctions.add(noop);
+                    try {
+                        Object.defineProperty(win.console, method, {
+                            value: noop,
+                            writable: true,
+                            configurable: true
+                        });
+                    } catch (e) {
+                        win.console[method] = noop;
+                    }
+                }
+            }
+        } else if (win.console) {
+            // On top-level page: Sanitization mode so elements/getters are safely logged without triggers
+            const _origConsole = {};
+            for (const method of consoleMethods) {
+                if (typeof win.console[method] === 'function') {
+                    _origConsole[method] = win.console[method];
+                    const sanitizedConsoleMethod = function (...args) {
+                        const sanitizedArgs = args.map(arg => {
+                            if (arg === null || arg === undefined) return arg;
+                            if (arg instanceof HTMLElement) {
+                                return `[Element: ${arg.tagName.toLowerCase()}]`;
                             }
-                        }
-                        return arg;
-                    });
-                    return _origConsole[method].apply(this, sanitizedArgs);
-                };
+                            if (arg instanceof RegExp) {
+                                return '[RegExp]';
+                            }
+                            if (typeof arg === 'function') {
+                                return '[Function]';
+                            }
+                            if (typeof arg === 'object') {
+                                try {
+                                    const descriptors = Object.getOwnPropertyDescriptors(arg);
+                                    for (const key in descriptors) {
+                                        if (descriptors[key].get) {
+                                            return '[Object with Getters]';
+                                        }
+                                    }
+                                    if (Object.prototype.hasOwnProperty.call(arg, 'toString') || arg.toString !== Object.prototype.toString) {
+                                        return '[Object with custom toString]';
+                                    }
+                                } catch (e) {
+                                    return '[Unsafe Object]';
+                                }
+                            }
+                            return arg;
+                        });
+                        return _origConsole[method].apply(this, sanitizedArgs);
+                    };
+                    mockedFunctions.add(sanitizedConsoleMethod);
+                    try {
+                        Object.defineProperty(win.console, method, {
+                            value: sanitizedConsoleMethod,
+                            writable: true,
+                            configurable: true
+                        });
+                    } catch (e) {
+                        win.console[method] = sanitizedConsoleMethod;
+                    }
+                }
             }
         }
 
@@ -153,34 +366,27 @@
         const _origToString = Function.prototype.toString;
         const NATIVE_STR = 'function () { [native code] }';
         Function.prototype.toString = function () {
-            const fn = this;
-            if (fn === safeFnFactory || fn === win.Function || fn === win.eval) {
+            if (mockedFunctions.has(this)) {
                 return NATIVE_STR;
-            }
-            if (fn === win.setInterval || fn === win.setTimeout ||
-                fn === win.requestAnimationFrame) {
-                return NATIVE_STR;
-            }
-            for (const method of consoleMethods) {
-                if (fn === win.console[method]) {
-                    return NATIVE_STR;
-                }
             }
             return _origToString.apply(this, arguments);
         };
+        mockedFunctions.add(Function.prototype.toString);
 
-        // --- Block console.clear to preserve our logs ---
-        try {
-            Object.defineProperty(win.console, 'clear', {
-                value: function () { },
-                writable: false,
-                configurable: false
-            });
-        } catch (e) {
-            try { win.console.clear = function () { }; } catch (e2) { }
+        // --- Block console.clear completely to preserve debugging trace ---
+        if (win.console) {
+            try {
+                Object.defineProperty(win.console, 'clear', {
+                    value: function () { },
+                    writable: false,
+                    configurable: false
+                });
+            } catch (e) {
+                try { win.console.clear = function () { }; } catch (e2) { }
+            }
         }
 
-        // --- Block devtools detection via element.constructor ---
+        // --- Block devtools detection via stack trace elements ---
         try {
             const _origErrorPrepare = Error.prepareStackTrace;
             Error.prepareStackTrace = function (err, stack) {
@@ -193,6 +399,34 @@
                 return _origErrorPrepare ? _origErrorPrepare(err, filtered) : String(filtered);
             };
         } catch (e) { }
+
+        // --- Intercept SandboxDetector assignment to disable pointer lock checks ---
+        let _sandboxDetector = null;
+        try {
+            Object.defineProperty(win, 'SandboxDetector', {
+                get() {
+                    return _sandboxDetector;
+                },
+                set(val) {
+                    if (val && typeof val === 'object') {
+                        val.detect = async () => false;
+                        val.run = async (opts) => {
+                            if (opts && opts.onAllowed) {
+                                try { opts.onAllowed(); } catch(e) {}
+                            }
+                            if (opts && opts.onResult) {
+                                try { opts.onResult(false); } catch(e) {}
+                            }
+                            return false;
+                        };
+                    }
+                    _sandboxDetector = val;
+                },
+                configurable: true
+            });
+        } catch (e) {
+            log(`Failed to define SandboxDetector property: ${e.message}`);
+        }
     }
     log('Anti-debug active.');
 
@@ -320,6 +554,20 @@
                             { header: 'Access-Control-Allow-Headers', operation: 'set', value: '*' }
                         ]
                     }
+                },
+                {
+                    selector: { url: '*://mt.nekostream.site/*/subtitles/*.vtt*', types: ['xmlhttprequest', 'fetch'] },
+                    action: {
+                        requestHeaders: [
+                            { header: 'Referer', operation: 'set', value: 'https://vidtube.site/' },
+                            { header: 'Origin', operation: 'set', value: 'https://vidtube.site' }
+                        ],
+                        responseHeaders: [
+                            { header: 'Access-Control-Allow-Origin', operation: 'set', value: '*' },
+                            { header: 'Access-Control-Allow-Methods', operation: 'set', value: 'GET, HEAD, OPTIONS' },
+                            { header: 'Access-Control-Allow-Headers', operation: 'set', value: '*' }
+                        ]
+                    }
                 }
             ], (info) => { if (info?.result === 'success') log(`webRequest OK: ${(info.url || '').substring(0, 80)}`); });
             log('GM_webRequest registered.');
@@ -340,17 +588,86 @@
     let _bridgeBlockedCount = 0;
     let _bridgeLastCount = 0;
     const vttCache = new Map();
-
+ 
     let itHookReady = false;
     let itHookResolve = null;
-    const itHookPromise = new Promise(resolve => {
+    let itHookPromise = new Promise(resolve => {
         itHookResolve = resolve;
     });
+
+    let vttBootWatcherInterval = null;
+
+    const resetItHookGate = () => {
+        itHookReady = false;
+        itHookPromise = new Promise(resolve => {
+            itHookResolve = resolve;
+        });
+        log('IT hook gate reset for new episode.');
+    };
+
+    const startVttBootWatcher = () => {
+        if (vttBootWatcherInterval) clearInterval(vttBootWatcherInterval);
+        vttBootWatcherInterval = setInterval(() => {
+            findVtt();
+            // Also aggressively poll JWPlayer for English VTT
+            if (!vttUrl || !vttUrlIsEnglish) {
+                const eng = getJwplayerEnglishVtt();
+                if (eng) {
+                    updateVttUrl(eng, 'boot watcher jwplayer poll', true);
+                }
+            }
+            if (vttUrl && !vttText && !fetchInProgress) {
+                fetchAndCacheVtt();
+            }
+            if (vttText && cues.length > 0) {
+                clearInterval(vttBootWatcherInterval);
+                vttBootWatcherInterval = null;
+                log('Boot watcher completed: VTT cached with cues.');
+            }
+        }, 1000);
+    };
+
+    const resetStateForNewVideo = (reason) => {
+        log(`Resetting state for new video. Reason: ${reason}`);
+        vttUrl = null;
+        vttUrlIsEnglish = false;
+        vttText = null;
+        cues = [];
+        translatedCues = [];
+        itTranslationDetected = false;
+        fetchInProgress = false;
+        vttCache.clear();
+        if (overlayContainer) {
+            try {
+                overlayContainer.remove();
+            } catch (e) {}
+            overlayContainer = null;
+        }
+        currentDisplay = { en: '', vi: '' };
+        resetItHookGate();
+        startITTranslationMonitor();
+        startVttBootWatcher();
+    };
+
+    const shouldResetForVttUrl = (newUrl) => {
+        if (!vttUrl) return false;
+        const normNew = normalizeUrl(newUrl);
+        const normCurrent = normalizeUrl(vttUrl);
+        if (normNew === normCurrent) return false;
+        try {
+            const uNew = new URL(normNew);
+            const uCur = new URL(normCurrent);
+            if (uNew.pathname !== uCur.pathname) return true;
+        } catch (e) {
+            return true;
+        }
+        return false;
+    };
 
     const waitForItHook = () => {
         return Promise.race([
             itHookPromise,
-            new Promise(resolve => setTimeout(resolve, 2000))
+            new Promise(resolve => setTimeout(resolve, 3000))
         ]);
     };
 
@@ -478,6 +795,16 @@
                 const inst = origJw.apply(this, args);
                 if (inst && typeof inst.setup === 'function' && !inst._setupHooked) {
                     inst._setupHooked = true;
+ 
+                    // Listen for playlistItem to reset state on new video load
+                    try {
+                        inst.on('playlistItem', (event) => {
+                            log(`jwplayer playlistItem: new item loaded.`);
+                            resetStateForNewVideo('jwplayer playlistItem');
+                        });
+                    } catch (e) {
+                        log(`Error adding playlistItem listener: ${e.message}`);
+                    }
 
                     const origSetup = inst.setup;
                     inst.setup = function (options, ...sArgs) {
@@ -607,9 +934,13 @@
     const updateVttUrl = (url, source, isKnownEnglish = false) => {
         const norm = normalizeUrl(url);
         if (!norm) return;
-
+ 
+        if (shouldResetForVttUrl(norm)) {
+            resetStateForNewVideo(`New VTT URL detected via ${source}: ${norm}`);
+        }
+ 
         const isEng = isKnownEnglish || isEnglishVtt(norm);
-
+ 
         if (!vttUrl) {
             vttUrl = norm;
             vttUrlIsEnglish = isEng;
@@ -672,7 +1003,7 @@
 
     // ── 3.5 Early window.fetch Override ───────────────────────────────
     // Intercepts VTT fetches to inject Referer/Origin headers via GM_xmlhttpRequest
-    const VTT_FETCH_REGEX = /(?:lostproject\.club|watching\.onl)\/.+\.vtt/i;
+    const VTT_FETCH_REGEX = /(?:lostproject\.club|watching\.onl|mt\.nekostream\.site)\/.+\.vtt/i;
     const _origFetch = unsafeWindow.fetch;
 
     ourFetchWrapper = function (input, init) {
@@ -724,11 +1055,6 @@
         // lostproject.club VTT: inject Referer via GM_xmlhttpRequest
         if (VTT_FETCH_REGEX.test(urlStr)) {
             const normUrl = normalizeUrl(urlStr);
-
-            // Trigger the extension's fetch hook in the background so it registers the VTT
-            try {
-                _origFetch.call(this, input, init).catch(() => { });
-            } catch (e) { }
 
             // Serve from cache if already fetched
             if (vttCache.has(normUrl)) {
@@ -957,6 +1283,7 @@
                 vttText = resp.responseText;
                 vttCache.set(vttUrl, vttText);
                 cues = parseVTT(vttText);
+                fetchInProgress = false;
                 log(`VTT cached (${vttText.length} bytes, ${cues.length} cues).`);
 
                 // Set video metadata for IT extension
@@ -1557,18 +1884,31 @@
 
     // ── 8. Boot ──────────────────────────────────────────────────────
     findVtt();
+    startVttBootWatcher();
 
-    const vttBootWatcher = setInterval(() => {
-        findVtt();
-        if (vttUrl && !vttText && !fetchInProgress) {
-            fetchAndCacheVtt();
-        }
-        if (vttText && cues.length > 0) {
-            clearInterval(vttBootWatcher);
+    // Monitor video element changes (source changes, new element creation)
+    let lastVideoElement = null;
+    let lastVideoSrc = null;
+    setInterval(() => {
+        const video = document.querySelector('video');
+        if (video) {
+            if (video !== lastVideoElement) {
+                const isFirst = (lastVideoElement === null);
+                lastVideoElement = video;
+                lastVideoSrc = video.src;
+                if (!isFirst && vttUrl) {
+                    resetStateForNewVideo('New video element detected');
+                }
+            } else if (video.src !== lastVideoSrc) {
+                lastVideoSrc = video.src;
+                if (vttUrl) {
+                    resetStateForNewVideo('Video src changed');
+                }
+            }
         }
     }, 1000);
 
-    log('v11.1 ready. Pure IT engine fix — no Google fallback.');
+    log('v11.5 ready. Pure IT engine fix — visual console, no Google fallback.');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
@@ -1627,6 +1967,9 @@
             const data = event.data;
             if (data && data.type === 'it-fix-log') {
                 console.log(`[IT-Fix][relay:${data.frameId}] ${data.msg}`);
+                try {
+                    appendToVisualConsole(data.msg, data.frameId);
+                } catch (e) { }
             }
             // Receive VTT relay from iframe
             if (data && data.type === 'it-fix-vtt-relay') {
@@ -1761,5 +2104,5 @@
         setTimeout(iframePlayerCheck, 15000);
     }
 
-    log(`v10.6 initialization complete. isInIframe=${isInIframe}`);
+    log(`v11.5 initialization complete. isInIframe=${isInIframe}`);
 })();

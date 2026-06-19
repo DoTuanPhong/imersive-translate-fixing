@@ -33,6 +33,3 @@ anisuge*
 *.vtt
 anime_info.json
 immersive_translate_full_user_config
-
-# External independent tools/repos in workspace
-firefox-devtools-mcp/

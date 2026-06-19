@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.3 No Anti-Debug
+// @name         Megaplay.buzz Immersive Translate Fix v11.5 No Anti-Debug
 // @namespace    http://tampermonkey.net/
-// @version      11.3
-// @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. No Google fallback.
+// @version      11.5
+// @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. Visual Console. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
 // @match        *://animesuge.cz/*
@@ -32,12 +32,149 @@
 
     const isInIframe = (window !== window.top);
     const frameId = isInIframe ? `IFRAME:${location.hostname}` : 'TOP';
+
+    let visualConsoleContainer = null;
+    let visualConsoleBody = null;
+
+    const initVisualConsole = () => {
+        if (isInIframe || visualConsoleContainer) return;
+        if (!document.body) {
+            window.addEventListener('DOMContentLoaded', () => initVisualConsole());
+            return;
+        }
+
+        // Create container
+        visualConsoleContainer = document.createElement('div');
+        visualConsoleContainer.id = 'it-visual-console';
+        visualConsoleContainer.style.cssText = `
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 380px;
+            height: 250px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 2147483647;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 11px;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        `;
+
+        // Create header
+        const header = document.createElement('div');
+        header.style.cssText = `
+            padding: 6px 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        `;
+        header.innerHTML = `
+            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.4</span>
+            <div>
+                <button id="it-btn-clear" style="background:none;border:none;color:#ff9800;cursor:pointer;margin-right:8px;font-size:10px;">Clear</button>
+                <span id="it-btn-toggle" style="color:#aaa;">▼</span>
+            </div>
+        `;
+
+        // Create body (log list)
+        visualConsoleBody = document.createElement('div');
+        visualConsoleBody.style.cssText = `
+            flex: 1;
+            padding: 8px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        `;
+
+        visualConsoleContainer.appendChild(header);
+        visualConsoleContainer.appendChild(visualConsoleBody);
+        document.body.appendChild(visualConsoleContainer);
+
+        // Toggle expand/collapse
+        let collapsed = false;
+        const toggle = () => {
+            collapsed = !collapsed;
+            if (collapsed) {
+                visualConsoleContainer.style.height = '30px';
+                visualConsoleContainer.style.width = '240px';
+                header.querySelector('#it-btn-toggle').textContent = '▲';
+                visualConsoleBody.style.display = 'none';
+            } else {
+                visualConsoleContainer.style.height = '250px';
+                visualConsoleContainer.style.width = '380px';
+                header.querySelector('#it-btn-toggle').textContent = '▼';
+                visualConsoleBody.style.display = 'flex';
+                visualConsoleBody.scrollTop = visualConsoleBody.scrollHeight;
+            }
+        };
+
+        header.addEventListener('click', (e) => {
+            if (e.target.id === 'it-btn-clear') {
+                visualConsoleBody.innerHTML = '';
+                return;
+            }
+            toggle();
+        });
+        
+        // Add CSS to style scrollbars
+        const style = document.createElement('style');
+        style.textContent = `
+            #it-visual-console ::-webkit-scrollbar { width: 6px; }
+            #it-visual-console ::-webkit-scrollbar-track { background: transparent; }
+            #it-visual-console ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+            #it-visual-console ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+        `;
+        document.head.appendChild(style);
+    };
+
+    const appendToVisualConsole = (msg, frameName) => {
+        if (isInIframe) return;
+        if (!visualConsoleContainer) {
+            initVisualConsole();
+        }
+        if (!visualConsoleBody) return;
+
+        const line = document.createElement('div');
+        line.style.cssText = 'line-height: 1.3; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px; word-break: break-all;';
+        
+        let color = '#fff';
+        if (msg.includes('ERROR') || msg.includes('FAILED') || msg.includes('Failed') || msg.includes('error')) color = '#ff5252';
+        else if (msg.includes('upgraded') || msg.includes('detected') || msg.includes('OK') || msg.includes('cached') || msg.includes('Active') || msg.includes('ACTIVE') || msg.includes('READY')) color = '#69f0ae';
+        else if (msg.includes('Delaying') || msg.includes('Safety timeout') || msg.includes('inactivity') || msg.includes('INACTIVE') || msg.includes('Resetting')) color = '#ffd740';
+
+        const prefix = frameName === 'TOP' ? '<span style="color:#00e5ff;">[TOP]</span>' : `<span style="color:#ff4081;">[${frameName}]</span>`;
+        line.innerHTML = `${prefix} <span style="color: ${color};">${msg}</span>`;
+        visualConsoleBody.appendChild(line);
+
+        while (visualConsoleBody.children.length > 40) {
+            visualConsoleBody.removeChild(visualConsoleBody.firstChild);
+        }
+        visualConsoleBody.scrollTop = visualConsoleBody.scrollHeight;
+    };
+
     const log = (msg) => {
         console.log(`[IT-Fix][${frameId}] ${msg}`);
-        // If we're in an iframe, also relay logs to parent for visibility
         if (isInIframe) {
             try {
                 window.parent.postMessage({ type: 'it-fix-log', frameId, msg }, '*');
+            } catch (e) { }
+        } else {
+            try {
+                appendToVisualConsole(msg, 'TOP');
             } catch (e) { }
         }
     };
@@ -186,17 +323,86 @@
     let _bridgeBlockedCount = 0;
     let _bridgeLastCount = 0;
     const vttCache = new Map();
-
+ 
     let itHookReady = false;
     let itHookResolve = null;
-    const itHookPromise = new Promise(resolve => {
+    let itHookPromise = new Promise(resolve => {
         itHookResolve = resolve;
     });
+
+    let vttBootWatcherInterval = null;
+
+    const resetItHookGate = () => {
+        itHookReady = false;
+        itHookPromise = new Promise(resolve => {
+            itHookResolve = resolve;
+        });
+        log('IT hook gate reset for new episode.');
+    };
+
+    const startVttBootWatcher = () => {
+        if (vttBootWatcherInterval) clearInterval(vttBootWatcherInterval);
+        vttBootWatcherInterval = setInterval(() => {
+            findVtt();
+            // Also aggressively poll JWPlayer for English VTT
+            if (!vttUrl || !vttUrlIsEnglish) {
+                const eng = getJwplayerEnglishVtt();
+                if (eng) {
+                    updateVttUrl(eng, 'boot watcher jwplayer poll', true);
+                }
+            }
+            if (vttUrl && !vttText && !fetchInProgress) {
+                fetchAndCacheVtt();
+            }
+            if (vttText && cues.length > 0) {
+                clearInterval(vttBootWatcherInterval);
+                vttBootWatcherInterval = null;
+                log('Boot watcher completed: VTT cached with cues.');
+            }
+        }, 1000);
+    };
+
+    const resetStateForNewVideo = (reason) => {
+        log(`Resetting state for new video. Reason: ${reason}`);
+        vttUrl = null;
+        vttUrlIsEnglish = false;
+        vttText = null;
+        cues = [];
+        translatedCues = [];
+        itTranslationDetected = false;
+        fetchInProgress = false;
+        vttCache.clear();
+        if (overlayContainer) {
+            try {
+                overlayContainer.remove();
+            } catch (e) {}
+            overlayContainer = null;
+        }
+        currentDisplay = { en: '', vi: '' };
+        resetItHookGate();
+        startITTranslationMonitor();
+        startVttBootWatcher();
+    };
+
+    const shouldResetForVttUrl = (newUrl) => {
+        if (!vttUrl) return false;
+        const normNew = normalizeUrl(newUrl);
+        const normCurrent = normalizeUrl(vttUrl);
+        if (normNew === normCurrent) return false;
+        try {
+            const uNew = new URL(normNew);
+            const uCur = new URL(normCurrent);
+            if (uNew.pathname !== uCur.pathname) return true;
+        } catch (e) {
+            return true;
+        }
+        return false;
+    };
 
     const waitForItHook = () => {
         return Promise.race([
             itHookPromise,
-            new Promise(resolve => setTimeout(resolve, 2000))
+            new Promise(resolve => setTimeout(resolve, 3000))
         ]);
     };
 
@@ -324,6 +530,16 @@
                 const inst = origJw.apply(this, args);
                 if (inst && typeof inst.setup === 'function' && !inst._setupHooked) {
                     inst._setupHooked = true;
+ 
+                    // Listen for playlistItem to reset state on new video load
+                    try {
+                        inst.on('playlistItem', (event) => {
+                            log(`jwplayer playlistItem: new item loaded.`);
+                            resetStateForNewVideo('jwplayer playlistItem');
+                        });
+                    } catch (e) {
+                        log(`Error adding playlistItem listener: ${e.message}`);
+                    }
 
                     const origSetup = inst.setup;
                     inst.setup = function (options, ...sArgs) {
@@ -454,8 +670,12 @@
         const norm = normalizeUrl(url);
         if (!norm) return;
 
+        if (shouldResetForVttUrl(norm)) {
+            resetStateForNewVideo(`New VTT URL detected via ${source}: ${norm}`);
+        }
+ 
         const isEng = isKnownEnglish || isEnglishVtt(norm);
-
+ 
         if (!vttUrl) {
             vttUrl = norm;
             vttUrlIsEnglish = isEng;
@@ -464,7 +684,7 @@
             vttUrl = norm;
             vttUrlIsEnglish = true;
             log(`VTT upgraded to English via ${source}: ${vttUrl}`);
-
+ 
             // Reset fetchInProgress and vttText so we refetch the English VTT!
             vttText = null;
             cues = [];
@@ -803,6 +1023,7 @@
                 vttText = resp.responseText;
                 vttCache.set(vttUrl, vttText);
                 cues = parseVTT(vttText);
+                fetchInProgress = false;
                 log(`VTT cached (${vttText.length} bytes, ${cues.length} cues).`);
 
                 // Set video metadata for IT extension
@@ -1403,18 +1624,31 @@
 
     // ── 8. Boot ──────────────────────────────────────────────────────
     findVtt();
+    startVttBootWatcher();
 
-    const vttBootWatcher = setInterval(() => {
-        findVtt();
-        if (vttUrl && !vttText && !fetchInProgress) {
-            fetchAndCacheVtt();
-        }
-        if (vttText && cues.length > 0) {
-            clearInterval(vttBootWatcher);
+    // Monitor video element changes (source changes, new element creation)
+    let lastVideoElement = null;
+    let lastVideoSrc = null;
+    setInterval(() => {
+        const video = document.querySelector('video');
+        if (video) {
+            if (video !== lastVideoElement) {
+                const isFirst = (lastVideoElement === null);
+                lastVideoElement = video;
+                lastVideoSrc = video.src;
+                if (!isFirst && vttUrl) {
+                    resetStateForNewVideo('New video element detected');
+                }
+            } else if (video.src !== lastVideoSrc) {
+                lastVideoSrc = video.src;
+                if (vttUrl) {
+                    resetStateForNewVideo('Video src changed');
+                }
+            }
         }
     }, 1000);
 
-    log('v11.3 ready. Pure IT engine fix without anti-debug hooks — no Google fallback.');
+    log('v11.5 ready. Pure IT engine fix without anti-debug hooks — no Google fallback.');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
@@ -1473,6 +1707,9 @@
             const data = event.data;
             if (data && data.type === 'it-fix-log') {
                 console.log(`[IT-Fix][relay:${data.frameId}] ${data.msg}`);
+                try {
+                    appendToVisualConsole(data.msg, data.frameId);
+                } catch (e) { }
             }
             // Receive VTT relay from iframe
             if (data && data.type === 'it-fix-vtt-relay') {
@@ -1607,5 +1844,5 @@
         setTimeout(iframePlayerCheck, 15000);
     }
 
-    log(`v10.6 initialization complete. isInIframe=${isInIframe}`);
+    log(`v11.5 initialization complete. isInIframe=${isInIframe}`);
 })();
