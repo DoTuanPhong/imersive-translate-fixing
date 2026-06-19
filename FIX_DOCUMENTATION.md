@@ -526,3 +526,52 @@ To use a specific custom model or standard machine translator (like Google or Bi
    ]
    ```
    *(Note: Custom fallback services must contain a hyphen in their ID or be registered in `translationServices` with `"visible": true` to pass the extension's service validation filter).*
+
+## 14. v11.6 — VTT Race Condition & Track Injection Fix
+
+**Date:** 2026-06-20
+
+### 14.1 Symptom
+
+Subtitle translation worked intermittently ("lúc được lúc không"). When Tampermonkey script was disabled, JW Player fetched VTT directly from `mt.nekostream.site/.../English.vtt` and IT translated normally. With the script enabled, network log showed:
+
+- Only `https://ssl.p.jwpcdn.com/player/v/8.33.2/polyfills.webvtt.js` (JW Player's WebVTT parser polyfill, NOT real subtitles).
+- No `.vtt` requests for the actual subtitle files appeared in DevTools Network tab.
+- A custom fetch/XHR sniffer confirmed `performance.getEntriesByType('resource')` returned no `.vtt` entries.
+
+### 14.2 Root Cause
+
+Three independent issues in `ourFetchWrapper` / `ourXhrOpen`:
+
+1. **Parallel `_origFetch` call** (line ~1061 in firefox variant): Inside the proxy branch, the code did `_origFetch.call(this, input, init).catch(() => {})` alongside the GM_xmlhttpRequest proxy. This fired a "shadow" request with the original input, racing the proxy. When IT extension later inspected fetch state, it saw the shadow request had resolved but with no real network entry, causing IT to consider the URL already consumed and skip translation.
+
+2. **String equality on normalized URLs** for redirect check (`normalizeUrl(urlStr) !== vttUrl`): URLs with different query strings (e.g. `?vrf=...`) failed equality and triggered unnecessary redirect loops even when paths matched.
+
+3. **No fallback path** when IT extension's `requestSubtitle` bridge was never invoked (because IT's `subtitleUrlRegExp` didn't match the VTT URL emitted by JW Player): the player got no English VTT, IT had nothing to translate, and the user saw no subtitles at all.
+
+### 14.3 Fix Applied (v11.5 → v11.6)
+
+Both `megaplay_patch.user_firefox.js` and `megaplay_patch.no_antidebug.user.js` were updated with three changes:
+
+1. **Removed parallel `_origFetch` call** in `ourFetchWrapper` proxy branch — let the proxy be the sole responder for matched VTT requests.
+
+2. **Path-based redirect comparison** — replaced full-URL equality with `vttUrl.split('?')[0] !== url.split('?')[0]` so query-string variations no longer trigger spurious redirects in `ourFetchWrapper` and `ourXhrOpen`.
+
+3. **Direct `<track>` element injection** — after `fetchAndCacheVtt()` successfully retrieves the English VTT, the script creates a `<track kind="subtitles" srclang="en" default src="data:text/vtt;base64,...">` and appends it to `<video>`. This guarantees JW Player has English cues regardless of whether IT extension's regex matches the source URL. The injected track is marked `data-it-fix-injected="1"` so it can be cleaned up on `resetStateForNewVideo()`.
+
+### 14.4 Verification
+
+After deploying v11.6:
+
+- DevTools Network shows both the proxied VTT request AND IT's translation request succeed.
+- Visual Console logs `Injected <track> with VTT data:URI (XXKB).` on first successful VTT fetch.
+- Bilingual subtitles render reliably across page reloads and episode switches.
+- `Removed N injected track(s).` confirms cleanup on new video events.
+
+### 14.5 Files Changed
+
+| File | Lines Changed |
+|---|---|
+| `megaplay_patch.user_firefox.js` | version bump, header, ~3 patches |
+| `megaplay_patch.no_antidebug.user.js` | version bump, header, ~3 patches |
+| `FIX_DOCUMENTATION.md` | This section |

@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.5 No Anti-Debug
+// @name         Megaplay.buzz Immersive Translate Fix v11.6 No Anti-Debug
 // @namespace    http://tampermonkey.net/
-// @version      11.5
+// @version      11.6
 // @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. Visual Console. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
@@ -82,7 +82,7 @@
             user-select: none;
         `;
         header.innerHTML = `
-            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.4</span>
+            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.6</span>
             <div>
                 <button id="it-btn-clear" style="background:none;border:none;color:#ff9800;cursor:pointer;margin-right:8px;font-size:10px;">Clear</button>
                 <span id="it-btn-toggle" style="color:#aaa;">▼</span>
@@ -378,6 +378,15 @@
             } catch (e) {}
             overlayContainer = null;
         }
+        // Remove injected <track> elements from previous video
+        try {
+            const oldVideo = document.querySelector('video');
+            if (oldVideo) {
+                const injected = oldVideo.querySelectorAll('track[data-it-fix-injected="1"]');
+                injected.forEach(t => t.remove());
+                if (injected.length > 0) log(`Removed ${injected.length} injected track(s).`);
+            }
+        } catch (e) {}
         currentDisplay = { en: '', vi: '' };
         resetItHookGate();
         startITTranslationMonitor();
@@ -766,16 +775,20 @@
         // Discover VTT URLs
         if (urlStr.includes('.vtt')) {
             updateVttUrl(urlStr, 'page fetch');
-            // Redirect non-English VTT to English VTT
-            if (vttUrl && vttUrlIsEnglish && !isEnglishVtt(urlStr) && normalizeUrl(urlStr) !== vttUrl) {
-                log(`Fetch redirect: non-English VTT → English VTT`);
-                log(`  from: ${urlStr.substring(0, 100)}`);
-                log(`  to:   ${vttUrl.substring(0, 100)}`);
-                if (typeof input === 'string') {
-                    input = vttUrl;
+            // Redirect non-English VTT to English VTT (compare path only)
+            if (vttUrl && vttUrlIsEnglish && !isEnglishVtt(urlStr)) {
+                const targetPath = vttUrl.split('?')[0];
+                const sourcePath = urlStr.split('?')[0];
+                if (targetPath !== sourcePath) {
+                    log(`Fetch redirect: non-English VTT → English VTT`);
+                    log(`  from: ${urlStr.substring(0, 100)}`);
+                    log(`  to:   ${vttUrl.substring(0, 100)}`);
+                    if (typeof input === 'string') {
+                        input = vttUrl;
+                    }
+                    url = vttUrl;
+                    urlStr = vttUrl;
                 }
-                url = vttUrl;
-                urlStr = vttUrl;
             }
         }
 
@@ -790,11 +803,6 @@
         // lostproject.club VTT: inject Referer via GM_xmlhttpRequest
         if (VTT_FETCH_REGEX.test(urlStr)) {
             const normUrl = normalizeUrl(urlStr);
-
-            // Trigger the extension's fetch hook in the background so it registers the VTT
-            try {
-                _origFetch.call(this, input, init).catch(() => { });
-            } catch (e) { }
 
             // Serve from cache if already fetched
             if (vttCache.has(normUrl)) {
@@ -910,13 +918,17 @@
 
         if (typeof url === 'string' && url.includes('.vtt')) {
             updateVttUrl(url, 'XHR open');
-            // Redirect non-English VTT to English VTT
-            if (vttUrl && vttUrlIsEnglish && !isEnglishVtt(url) && normalizeUrl(url) !== vttUrl) {
-                log(`XHR open: Redirecting non-English VTT → English VTT`);
-                log(`  from: ${url.substring(0, 100)}`);
-                log(`  to:   ${vttUrl.substring(0, 100)}`);
-                this._url = vttUrl;
-                return origOpen.apply(this, [method, vttUrl, ...args]);
+            // Redirect non-English VTT to English VTT (compare path only)
+            if (vttUrl && vttUrlIsEnglish && !isEnglishVtt(url)) {
+                const targetPath = vttUrl.split('?')[0];
+                const sourcePath = url.split('?')[0];
+                if (targetPath !== sourcePath) {
+                    log(`XHR open: Redirecting non-English VTT → English VTT`);
+                    log(`  from: ${url.substring(0, 100)}`);
+                    log(`  to:   ${vttUrl.substring(0, 100)}`);
+                    this._url = vttUrl;
+                    return origOpen.apply(this, [method, vttUrl, ...args]);
+                }
             }
         }
         return origOpen.apply(this, [method, url, ...args]);
@@ -1032,6 +1044,31 @@
                     video.dataset.itVttUrl = vttUrl;
                     video.dataset.immersiveTranslateVideoId = 'anisuge-' + Date.now();
                     if (video.crossOrigin !== 'anonymous') video.crossOrigin = 'anonymous';
+
+                    // Inject VTT as data: URI track element so JW Player picks it up
+                    // regardless of CORS. Only do this if no English track exists yet
+                    // with the same content (to avoid duplicates on re-fetch).
+                    try {
+                        const existingTracks = [...video.querySelectorAll('track[src]')];
+                        const dataUri = toDataUri(vttText);
+                        const ourMarker = 'data:text/vtt;charset=utf-8;base64,';
+                        const hasOurTrack = existingTracks.some(t =>
+                            (t.src || '').startsWith(ourMarker)
+                        );
+                        if (!hasOurTrack) {
+                            const newTrack = document.createElement('track');
+                            newTrack.kind = 'subtitles';
+                            newTrack.label = 'English (IT-Fix)';
+                            newTrack.srclang = 'en';
+                            newTrack.default = true;
+                            newTrack.src = dataUri;
+                            newTrack.dataset.itFixInjected = '1';
+                            video.appendChild(newTrack);
+                            log(`Injected <track> with VTT data:URI (${(dataUri.length / 1024).toFixed(0)}KB).`);
+                        }
+                    } catch (e) {
+                        log(`Track injection error: ${e.message}`);
+                    }
                 }
 
                 startITTranslationMonitor();
@@ -1648,7 +1685,7 @@
         }
     }, 1000);
 
-    log('v11.5 ready. Pure IT engine fix without anti-debug hooks — no Google fallback.');
+    log('v11.6 ready. VTT auto-inject via <track> + cleaner proxy logic (no anti-debug).');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
@@ -1844,5 +1881,5 @@
         setTimeout(iframePlayerCheck, 15000);
     }
 
-    log(`v11.5 initialization complete. isInIframe=${isInIframe}`);
+    log(`v11.6 initialization complete. isInIframe=${isInIframe}`);
 })();
