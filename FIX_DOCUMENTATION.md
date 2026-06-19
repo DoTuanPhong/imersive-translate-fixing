@@ -575,3 +575,56 @@ After deploying v11.6:
 | `megaplay_patch.user_firefox.js` | version bump, header, ~3 patches |
 | `megaplay_patch.no_antidebug.user.js` | version bump, header, ~3 patches |
 | `FIX_DOCUMENTATION.md` | This section |
+
+## 15. v11.7 — Slow Translation Fix (XHR Property Shadowing)
+
+**Date:** 2026-06-20
+
+### 15.1 Symptom
+
+After v11.6, subtitles worked but translation was **intermittent and slow** — Google Translate (which should be near-instant) stalled, then delivered translations in batches every several seconds. Console showed:
+
+```
+Uncaught TypeError: can't access property "currentTarget", t is undefined
+    onreadystatechange https://vidtube.site/lib/jw_player.js?s:9
+    onload ...megaplay_patch.user_firefox.js:1267
+```
+
+plus log noise from a fake `dispatchEvent(new Event('load'))` call inside the XHR VTT proxy.
+
+### 15.2 Root Cause
+
+Two compounding bugs in the XHR VTT proxy:
+
+1. **XHR prototype property shadowing** (`hookXhrPrototype`, formerly section 2.2). The script redefined `XMLHttpRequest.prototype.response`, `responseText`, `status`, `statusText`, `readyState`, `responseURL` getters/setters to mirror values into `_custom_*` slots. The setter intercepted native assignment: when JW Player or IT extension set `xhr.response = "..."` internally, the value went into `_custom_response` while the native slot stayed empty. The getter then returned `_custom_response` when set, but `XMLHttpRequest.prototype.responseText` (a separate native getter that reads from the platform's internal XHR state) returned **empty/undefined** because the platform state was never populated. IT extension then saw an "empty" XHR and fell back to slower code paths.
+
+2. **Fake `dispatchEvent('load')`** in the XHR proxy's `onload` callback. The script emitted a synthetic `'load'` event without a proper `ProgressEvent` payload, so handlers using `event.currentTarget` (which IT extension does) threw `currentTarget` undefined. The error was caught by IT but caused translation to retry/batch.
+
+### 15.3 Fix Applied (v11.6 → v11.7)
+
+1. **Removed `hookXhrPrototype` entirely** (firefox: line ~695, no_antidebug: line ~430). Native `XMLHttpRequest` behavior is restored, so `responseText` works normally for IT extension's reader.
+
+2. **Replaced XHR VTT proxy with passthrough + cache pre-warm**. When a VTT URL hits `XMLHttpRequest.prototype.send`, the script now:
+   - Lets `origSend.apply(this, arguments)` run untouched, so JW Player's XHR completes normally and IT sees a real, valid response.
+   - In parallel, fires `GM_xmlhttpRequest` to populate the `vttCache` Map (used only by `fetchAndCacheVtt` and `tryExtractSubtitleResponse`).
+   - The `<track>` injection introduced in v11.6 continues to guarantee IT has cues to translate.
+
+3. **Removed `safeDefineXHRProp` helper** since it referenced the deleted `_custom_*` slots.
+
+### 15.4 Verification
+
+After deploying v11.7:
+
+- Native XHR for `mt.nekostream.site/.../English.vtt` completes normally (visible in DevTools Network).
+- IT extension reads `responseText` directly from the platform XHR state without going through our shadow slots.
+- Translations appear continuously without batch gaps.
+- No more `currentTarget` undefined errors.
+- `<track>` injection still fires (`Injected <track> with VTT data:URI (XXKB).` log), ensuring fallback coverage.
+
+### 15.5 Files Changed
+
+| File | Lines Changed |
+|---|---|
+| `megaplay_patch.user_firefox.js` | version bump to 11.7, removed `hookXhrPrototype`, replaced XHR VTT proxy with passthrough, removed `safeDefineXHRProp` |
+| `megaplay_patch.no_antidebug.user.js` | Same as above |
+| `FIX_DOCUMENTATION.md` | This section |
