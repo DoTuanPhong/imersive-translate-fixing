@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.7 No Anti-Debug
+// @name         Megaplay.buzz Immersive Translate Fix v11.6 No Anti-Debug
 // @namespace    http://tampermonkey.net/
-// @version      11.7
+// @version      11.6
 // @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. Visual Console. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
@@ -82,7 +82,7 @@
             user-select: none;
         `;
         header.innerHTML = `
-            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.7</span>
+            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.6</span>
             <div>
                 <button id="it-btn-clear" style="background:none;border:none;color:#ff9800;cursor:pointer;margin-right:8px;font-size:10px;">Clear</button>
                 <span id="it-btn-toggle" style="color:#aaa;">▼</span>
@@ -427,10 +427,33 @@
     let ourXhrSend = null;
     let ourFetchWrapper = null;
 
-    // ── 2.2 v11.7: REMOVED XHR prototype property hook. It was intercepting
-    // setters for status/response/responseText and shadowing native state,
-    // which made IT extension see undefined responseText and fall back to
-    // slow code paths.
+    // ── 2.2 Hook XMLHttpRequest.prototype (for write/override protection) ──
+    const hookXhrPrototype = () => {
+        const props = ['status', 'statusText', 'readyState', 'response', 'responseText', 'responseURL'];
+        for (const prop of props) {
+            try {
+                const origDesc = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, prop);
+                Object.defineProperty(XMLHttpRequest.prototype, prop, {
+                    get() {
+                        const customKey = `_custom_${prop}`;
+                        if (Object.prototype.hasOwnProperty.call(this, customKey)) {
+                            return this[customKey];
+                        }
+                        return origDesc && origDesc.get ? origDesc.get.call(this) : undefined;
+                    },
+                    set(val) {
+                        const customKey = `_custom_${prop}`;
+                        this[customKey] = val;
+                    },
+                    configurable: true,
+                    enumerable: true
+                });
+            } catch (e) {
+                log(`Failed to hook XMLHttpRequest.prototype.${prop}: ${e.message}`);
+            }
+        }
+    };
+    hookXhrPrototype();
 
     // Hook Object.defineProperty to detect IT overriding XHR prototype
     try {
@@ -912,7 +935,10 @@
     };
     XMLHttpRequest.prototype.open = ourXhrOpen;
 
-    // Helper removed in v11.7 - safeDefineXHRProp no longer needed without XHR property hook
+    // Helper: safely set XHR properties (IT's translateSubtitle may pre-set them)
+    const safeDefineXHRProp = (xhr, prop, value) => {
+        xhr[`_custom_${prop}`] = value;
+    };
 
     ourXhrSend = function (body) {
         const urlStr = String(this._url);
@@ -931,29 +957,55 @@
         if (VTT_FETCH_REGEX.test(urlStr)) {
             const normUrl = normalizeUrl(urlStr);
 
-            // v11.7: Let native XHR pass through. fetchAndCacheVtt already
-            // injects <track> with data:URI for IT translation. Fake
-            // dispatchEvent('load') was breaking IT extension's handler
-            // (currentTarget undefined).
-            if (!vttCache.has(normUrl)) {
-                log(`XHR VTT passthrough; pre-warming cache: ${urlStr.substring(0, 80)}...`);
-                GM_xmlhttpRequest({
-                    method: this._method || 'GET',
-                    url: this._url,
-                    headers: {
-                        'Referer': location.origin + '/',
-                        'Origin': location.origin
-                    },
-                    onload: (resp) => {
-                        if (resp.status === 200 && resp.responseText) {
-                            vttCache.set(normUrl, resp.responseText);
-                            log(`XHR VTT pre-warm OK: ${(resp.responseText.length / 1024).toFixed(0)}KB`);
-                        }
-                    },
-                    onerror: () => { }
-                });
+            // Serve from cache if already fetched
+            if (vttCache.has(normUrl)) {
+                log(`XHR proxy (cache): ${urlStr.substring(0, 80)}...`);
+                const responseText = vttCache.get(normUrl);
+
+                // Use setTimeout to make mock response asynchronous, avoiding race condition with event listeners
+                setTimeout(() => {
+                    safeDefineXHRProp(this, 'status', 200);
+                    safeDefineXHRProp(this, 'statusText', 'OK');
+                    safeDefineXHRProp(this, 'readyState', 4);
+                    safeDefineXHRProp(this, 'response', responseText);
+                    safeDefineXHRProp(this, 'responseText', responseText);
+                    safeDefineXHRProp(this, 'responseURL', urlStr);
+
+                    if (typeof this.onreadystatechange === 'function') this.onreadystatechange();
+                    if (typeof this.onload === 'function') this.onload();
+                    this.dispatchEvent(new Event('readystatechange'));
+                    this.dispatchEvent(new Event('load'));
+                }, 10);
+                return;
             }
-            return origSend.apply(this, arguments);
+
+            log(`XHR proxy (network): ${urlStr.substring(0, 80)}... → GM_xmlhttpRequest`);
+            GM_xmlhttpRequest({
+                method: this._method || 'GET',
+                url: this._url,
+                headers: {
+                    'Referer': location.origin + '/',
+                    'Origin': location.origin
+                },
+                onload: (resp) => {
+                    vttCache.set(normUrl, resp.responseText);
+                    safeDefineXHRProp(this, 'status', resp.status);
+                    safeDefineXHRProp(this, 'statusText', resp.statusText);
+                    safeDefineXHRProp(this, 'readyState', 4);
+                    safeDefineXHRProp(this, 'response', resp.responseText);
+                    safeDefineXHRProp(this, 'responseText', resp.responseText);
+                    safeDefineXHRProp(this, 'responseURL', urlStr);
+
+                    if (typeof this.onreadystatechange === 'function') this.onreadystatechange();
+                    if (typeof this.onload === 'function') this.onload();
+                    this.dispatchEvent(new Event('readystatechange'));
+                    this.dispatchEvent(new Event('load'));
+                },
+                onerror: (e) => {
+                    this.dispatchEvent(new Event('error'));
+                }
+            });
+            return;
         }
         return origSend.apply(this, arguments);
     };
@@ -1633,7 +1685,7 @@
         }
     }, 1000);
 
-    log('v11.7 ready. Native XHR passthrough + <track> injection = fast translate (no anti-debug).');
+    log('v11.6 ready. VTT auto-inject via <track> + cleaner proxy logic (no anti-debug).');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
@@ -1829,5 +1881,5 @@
         setTimeout(iframePlayerCheck, 15000);
     }
 
-    log(`v11.7 initialization complete. isInIframe=${isInIframe}`);
+    log(`v11.6 initialization complete. isInIframe=${isInIframe}`);
 })();
