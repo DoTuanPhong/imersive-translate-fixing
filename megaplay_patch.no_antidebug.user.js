@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.6 No Anti-Debug
+// @name         Megaplay.buzz Immersive Translate Fix v11.6+ No Anti-Debug
 // @namespace    http://tampermonkey.net/
 // @version      11.6
 // @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. Visual Console. No Google fallback.
@@ -82,7 +82,7 @@
             user-select: none;
         `;
         header.innerHTML = `
-            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.6</span>
+            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.6+</span>
             <div>
                 <button id="it-btn-clear" style="background:none;border:none;color:#ff9800;cursor:pointer;margin-right:8px;font-size:10px;">Clear</button>
                 <span id="it-btn-toggle" style="color:#aaa;">▼</span>
@@ -689,6 +689,9 @@
             vttUrl = norm;
             vttUrlIsEnglish = isEng;
             log(`VTT detected via ${source}: ${vttUrl} (isEnglish: ${vttUrlIsEnglish})`);
+            if (vttUrlIsEnglish && !vttText && !fetchInProgress) {
+                setTimeout(() => fetchAndCacheVtt(), 0);
+            }
         } else if (isEng && !vttUrlIsEnglish) {
             vttUrl = norm;
             vttUrlIsEnglish = true;
@@ -1685,7 +1688,7 @@
         }
     }, 1000);
 
-    log('v11.6 ready. VTT auto-inject via <track> + cleaner proxy logic (no anti-debug).');
+    log('v11.6+ ready. v11.6 base + proactive cache warm on first English detect (no anti-debug).');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
@@ -1881,5 +1884,5 @@
         setTimeout(iframePlayerCheck, 15000);
     }
 
-    log(`v11.6 initialization complete. isInIframe=${isInIframe}`);
+    log(`v11.6+ initialization complete. isInIframe=${isInIframe}`);
 })();

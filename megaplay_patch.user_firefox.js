@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.6
+// @name         Megaplay.buzz Immersive Translate Fix v11.6+
 // @namespace    http://tampermonkey.net/
 // @version      11.6
 // @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. Visual Console. No Google fallback.
@@ -82,7 +82,7 @@
             user-select: none;
         `;
         header.innerHTML = `
-            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.6</span>
+            <span style="color: #4caf50;">[IT-Fix] Visual Log Panel v11.6+</span>
             <div>
                 <button id="it-btn-clear" style="background:none;border:none;color:#ff9800;cursor:pointer;margin-right:8px;font-size:10px;">Clear</button>
                 <span id="it-btn-toggle" style="color:#aaa;">▼</span>
@@ -745,10 +745,29 @@
                 return currentFetch;
             },
             set(newFetch) {
-                currentFetch = newFetch;
                 if (typeof newFetch === 'function' && newFetch !== ourFetchWrapper) {
-                    log(`Detected IT overriding window.fetch`);
+                    log(`Detected IT overriding window.fetch — wrapping with VTT bypass`);
                     triggerItHookReady();
+                    // Wrap IT's fetch hook: serve cached VTT directly so IT's
+                    // translateSubtitleWithFetch never sends requestSubtitle
+                    const itFetch = newFetch;
+                    currentFetch = function (input, init) {
+                        let url = typeof input === 'string' ? input : (input && (input.url || input.href)) || '';
+                        if (url && typeof url === 'string' && url.includes('.vtt') && VTT_FETCH_REGEX.test(String(url))) {
+                            const normUrl = normalizeUrl(String(url));
+                            const cachedContent = (vttText && normUrl === vttUrl) ? vttText : vttCache.get(normUrl);
+                            if (cachedContent) {
+                                log('Wrapped fetch: Serving cached VTT (bypasses IT hooks)');
+                                return Promise.resolve(new Response(cachedContent, {
+                                    status: 200, statusText: 'OK',
+                                    headers: { 'Content-Type': 'text/vtt; charset=utf-8' }
+                                }));
+                            }
+                        }
+                        return itFetch.call(this, input, init);
+                    };
+                } else {
+                    currentFetch = newFetch;
                 }
             },
             configurable: true
@@ -846,6 +865,28 @@
                                     });
                                     updateVttUrl(engTrack.file, 'jwplayer hook setup', true);
                                 }
+                                // Remove VTT subtitle tracks from config to prevent JWPlayer from
+                                // fetching them via XHR/fetch. IT's inject.js hooks intercept these
+                                // requests and send requestSubtitle to the content-script, which
+                                // can't fetch the VTT (missing Referer) and hangs for 30 seconds.
+                                // On Firefox, stopImmediatePropagation() cannot cross compartment
+                                // boundaries, so we must prevent the fetch entirely.
+                                const vttSubTracks = tracks.filter(t =>
+                                    t.file && t.file.includes('.vtt') &&
+                                    (!t.kind || t.kind === 'subtitles' || t.kind === 'captions')
+                                );
+                                if (vttSubTracks.length > 0) {
+                                    const nonVttTracks = tracks.filter(t =>
+                                        !t.file || !t.file.includes('.vtt') ||
+                                        (t.kind && t.kind !== 'subtitles' && t.kind !== 'captions')
+                                    );
+                                    if (options.playlist && options.playlist[0] && options.playlist[0].tracks) {
+                                        options.playlist[0].tracks = nonVttTracks;
+                                    } else if (options.tracks) {
+                                        options.tracks = nonVttTracks;
+                                    }
+                                    log(`Removed ${vttSubTracks.length} VTT subtitle track(s) from setup config.`);
+                                }
                             }
                         } catch (e) {
                             log(`Error in jwplayer setup hook: ${e.message}`);
@@ -908,6 +949,26 @@
                                     });
                                     updateVttUrl(engTrack.file, 'jwplayer hook load', true);
                                 }
+                                // Remove VTT subtitle tracks (same rationale as setup hook)
+                                const vttSubTracksLoad = tracks.filter(t =>
+                                    t.file && t.file.includes('.vtt') &&
+                                    (!t.kind || t.kind === 'subtitles' || t.kind === 'captions')
+                                );
+                                if (vttSubTracksLoad.length > 0) {
+                                    const nonVttTracksLoad = tracks.filter(t =>
+                                        !t.file || !t.file.includes('.vtt') ||
+                                        (t.kind && t.kind !== 'subtitles' && t.kind !== 'captions')
+                                    );
+                                    if (Array.isArray(playlist) && playlist[0] && playlist[0].tracks) {
+                                        playlist[0].tracks = nonVttTracksLoad;
+                                    } else if (playlist && typeof playlist === 'object') {
+                                        if (playlist.tracks) playlist.tracks = nonVttTracksLoad;
+                                        else if (playlist.playlist && playlist.playlist[0] && playlist.playlist[0].tracks) {
+                                            playlist.playlist[0].tracks = nonVttTracksLoad;
+                                        }
+                                    }
+                                    log(`Removed ${vttSubTracksLoad.length} VTT subtitle track(s) from load config.`);
+                                }
                             }
                         } catch (e) {
                             log(`Error in jwplayer load hook: ${e.message}`);
@@ -954,6 +1015,9 @@
             vttUrl = norm;
             vttUrlIsEnglish = isEng;
             log(`VTT detected via ${source}: ${vttUrl} (isEnglish: ${vttUrlIsEnglish})`);
+            if (vttUrlIsEnglish && !vttText && !fetchInProgress) {
+                setTimeout(() => fetchAndCacheVtt(), 0);
+            }
         } else if (isEng && !vttUrlIsEnglish) {
             vttUrl = norm;
             vttUrlIsEnglish = true;
@@ -1192,10 +1256,28 @@
                     log(`  from: ${url.substring(0, 100)}`);
                     log(`  to:   ${vttUrl.substring(0, 100)}`);
                     this._url = vttUrl;
-                    return origOpen.apply(this, [method, vttUrl, ...args]);
+                    url = vttUrl;
                 }
             }
         }
+
+        // If VTT is cached, replace URL with blob: URL so IT's XHR hooks
+        // (which run on the prototype AFTER our hook) see a non-matching URL
+        // and skip requestSubtitle (preventing the 30-second timeout).
+        const urlToCheck = this._url || url;
+        if (typeof urlToCheck === 'string' && urlToCheck.includes('.vtt') && VTT_FETCH_REGEX.test(urlToCheck)) {
+            const normUrl = normalizeUrl(urlToCheck);
+            const cachedContent = (vttText && normUrl === vttUrl) ? vttText : vttCache.get(normUrl);
+            if (cachedContent) {
+                this._realVttUrl = urlToCheck;
+                const blob = new Blob([cachedContent], { type: 'text/vtt; charset=utf-8' });
+                const blobUrl = URL.createObjectURL(blob);
+                this._url = blobUrl;
+                log(`XHR open: VTT → blob: URL (bypasses IT hooks)`);
+                return origOpen.apply(this, [method, blobUrl, ...args]);
+            }
+        }
+
         return origOpen.apply(this, [method, url, ...args]);
     };
     XMLHttpRequest.prototype.open = ourXhrOpen;
@@ -1424,6 +1506,7 @@
 
     let _pendingGetConfigIds = new Set();
 
+    // Window message listener handles both OUTBOUND (inject -> content-script) and INBOUND (content-script -> inject) messages
     window.addEventListener('message', function (event) {
         const msg = event.data;
         if (msg && typeof msg === 'object' && msg.eventType === IM_BRIDGE_EVENT) {
@@ -1436,15 +1519,29 @@
                 }
                 _bridgeMsgTypes[msgType]++;
 
-                // Track getConfig request IDs to match responses
-                if (msgType === 'getConfig' && msg.from === 'inject' && msg.to === 'content-script' && msg.id) {
-                    _pendingGetConfigIds.add(msg.id);
+                // --- OUTBOUND MESSAGE INTERCEPTION (inject -> content-script) ---
+                // NOTE: On Firefox, stopImmediatePropagation() cannot cross JavaScript
+                // compartment boundaries. The content-script's message listener is in a
+                // separate compartment and always receives the original message. Instead
+                // of trying to intercept here, we prevent IT from sending requestSubtitle
+                // by: (1) removing VTT tracks from JWPlayer config, (2) replacing VTT
+                // URLs with blob: URLs in XHR hooks, (3) wrapping IT's fetch hook.
+                if (msg.from === 'inject' && msg.to === 'content-script') {
+                    // Track getConfig request IDs to match responses
+                    if (msgType === 'getConfig' && msg.id) {
+                        _pendingGetConfigIds.add(msg.id);
+                    }
+                    // Log outbound messages for diagnostics (skip noisy ones)
+                    if (msgType !== 'isContentReady') {
+                        log(`Bridge (inject→cs) "${msgType}" id=${msg.id || 'none'}`);
+                    }
+                    return; // Don't process outbound messages further
                 }
 
-                // Log ALL bridge messages with direction info
+                // --- INBOUND MESSAGE INTERCEPTION (content-script -> inject) ---
                 const direction = `${msg.from}→${msg.to}`;
 
-                // Detect getConfig RESPONSE by matching ID (response has no type field)
+                // Detect getConfig RESPONSE by matching ID
                 const isGetConfigResponse = msg.from === 'content-script' && msg.to === 'inject'
                     && msg.id && _pendingGetConfigIds && _pendingGetConfigIds.has(msg.id);
 
@@ -1467,8 +1564,6 @@
                         log("IT is disabled or missing subtitle rule. Releasing queue immediately.");
                         triggerItHookReady();
                     } else {
-                        // Otherwise, we do NOT trigger here. We wait for actual XHR/fetch overrides!
-                        // But we set an 800ms safety timeout starting from getConfig response as a fallback.
                         setTimeout(() => {
                             if (!itHookReady) {
                                 log("Safety timeout after getConfig reached. Releasing VTT requests.");
@@ -1476,8 +1571,9 @@
                             }
                         }, 800);
                     }
-                } else {
-                    log(`Bridge [${_bridgeMsgTypes[msgType]}] "${msgType}" (${direction}) id=${msg.id || 'none'} async=${!!msg.isAsync} payload=${previewPayload(msg.data)}`);
+                } else if (msg.from === 'content-script' && msg.to === 'inject') {
+                    // Log inbound messages
+                    log(`Bridge (cs→inject) [${_bridgeMsgTypes[msgType]}] "${msgType}" id=${msg.id || 'none'} payload=${previewPayload(msg.data)}`);
                 }
 
                 // Block crash-prone messages ONLY on Firefox to prevent XrayWrapper crash
@@ -1486,176 +1582,19 @@
                     event.stopImmediatePropagation();
                     _bridgeBlockedCount++;
                     log(`Blocked "${msgType}" message to prevent Firefox XrayWrapper crash.`);
-                    if (!itTranslationDetected) tryExtractAttachSubtitle(msg);
+                    tryExtractAttachSubtitle(msg);
                     return;
-                }
-
-                // ── CRITICAL: Intercept requestSubtitle from inject→content-script ──
-                // IT's inject.js sends requestSubtitle to content-script for VTT fetching.
-                // Content-script can't fetch due to CORS (missing Referer). We respond
-                // with our cached VTT content directly.
-                if (msgType === 'requestSubtitle' && msg.from === 'inject' && msg.to === 'content-script') {
-                    // Dynamically query jwplayer for English VTT if we don't have it yet
-                    if (!vttUrl || !isEnglishVtt(vttUrl)) {
-                        const eng = getJwplayerEnglishVtt();
-                        if (eng) {
-                            updateVttUrl(eng, 'dynamic jwplayer check (postMessage)');
-                        }
-                    }
-
-                    const reqData = msg.data || {};
-                    const reqUrl = reqData.url || '';
-                    let fetchInfoUrl = '';
-                    if (reqData.fetchInfo) {
-                        try {
-                            const fi = JSON.parse(reqData.fetchInfo);
-                            fetchInfoUrl = fi?.input?.url || '';
-                        } catch (e) { }
-                    }
-                    let targetUrl = normalizeUrl(reqUrl) || normalizeUrl(fetchInfoUrl) || '';
-
-                    // ── ENGLISH PRIORITY: Always redirect to English VTT if available ──
-                    // IT extension may request a non-English VTT URL (e.g. Japanese sub).
-                    // We override it with our pre-detected English VTT URL so translations
-                    // are always based on English source text.
-                    if (vttUrl && isEnglishVtt(vttUrl) && targetUrl && targetUrl.includes('.vtt') && !isEnglishVtt(targetUrl)) {
-                        log(`requestSubtitle: REDIRECTING non-English VTT → English VTT`);
-                        log(`  from: ${targetUrl.substring(0, 100)}`);
-                        log(`  to:   ${vttUrl.substring(0, 100)}`);
-                        targetUrl = vttUrl;
-                    }
-
-                    log(`requestSubtitle intercepted (inject→cs): url=${targetUrl.substring(0, 100)}, id=${msg.id}, hasCache=${vttCache.has(targetUrl)}`);
-
-                    // ── Serve from pre-fetched English VTT text if available ──
-                    // If we already have the English VTT text cached from fetchAndCacheVtt(),
-                    // serve it immediately without needing to check vttCache Map.
-                    if (vttText && vttUrl && targetUrl === vttUrl) {
-                        event.stopImmediatePropagation();
-                        log(`requestSubtitle: Responding with pre-fetched English VTT (${vttText.length} bytes).`);
-                        const replyMsg = {
-                            eventType: IM_BRIDGE_EVENT,
-                            to: 'inject',
-                            from: 'content-script',
-                            type: 'requestSubtitle',
-                            data: vttText,
-                            id: msg.id,
-                            isAsync: true
-                        };
-                        unsafeWindow.postMessage(replyMsg, '*');
-                        return;
-                    }
-
-                    // Check if we have this VTT cached
-                    let cachedText = null;
-                    if (vttCache.has(targetUrl)) {
-                        cachedText = vttCache.get(targetUrl);
-                    } else {
-                        // Try partial match - check all cached URLs
-                        for (const [cachedUrl, cachedVal] of vttCache.entries()) {
-                            if (targetUrl && cachedUrl.includes('.vtt') &&
-                                (targetUrl.includes(cachedUrl) || cachedUrl.includes(targetUrl.split('?')[0]))) {
-                                cachedText = cachedVal;
-                                log(`requestSubtitle: partial cache match: ${cachedUrl.substring(0, 80)}`);
-                                break;
-                            }
-                        }
-                        // If still no cache, try to fetch it now
-                        if (!cachedText && targetUrl && targetUrl.includes('.vtt')) {
-                            log(`requestSubtitle: No cache, fetching VTT now: ${targetUrl.substring(0, 80)}`);
-                            const msgId = msg.id;
-                            GM_xmlhttpRequest({
-                                method: 'GET',
-                                url: targetUrl,
-                                headers: {
-                                    'Referer': location.origin + '/',
-                                    'Origin': location.origin
-                                },
-                                onload: (resp) => {
-                                    if (resp.status === 200 && resp.responseText) {
-                                        vttCache.set(targetUrl, resp.responseText);
-                                        log(`requestSubtitle: Fetched & cached (${resp.responseText.length} bytes). Responding to IT.`);
-                                        // Respond to IT inject with VTT content
-                                        const replyMsg = {
-                                            eventType: IM_BRIDGE_EVENT,
-                                            to: 'inject',
-                                            from: 'content-script',
-                                            type: 'requestSubtitle',
-                                            data: resp.responseText,
-                                            id: msgId,
-                                            isAsync: true
-                                        };
-                                        unsafeWindow.postMessage(replyMsg, '*');
-                                    } else {
-                                        log(`requestSubtitle: Fetch failed (${resp.status}), letting content-script handle.`);
-                                    }
-                                },
-                                onerror: () => {
-                                    log(`requestSubtitle: Fetch error, letting content-script handle.`);
-                                }
-                            });
-                            // Don't block the original message yet - content-script will also try
-                            // If our fetch succeeds, we'll send the reply first
-                        }
-                    }
-
-                    if (cachedText) {
-                        // Block the original message so content-script doesn't try to fetch
-                        event.stopImmediatePropagation();
-                        log(`requestSubtitle: Responding with cached VTT (${cachedText.length} bytes) to IT inject.`);
-
-                        // Send response matching IT's async message protocol
-                        const replyMsg = {
-                            eventType: IM_BRIDGE_EVENT,
-                            to: 'inject',
-                            from: 'content-script',
-                            type: 'requestSubtitle',
-                            data: cachedText,
-                            id: msg.id,
-                            isAsync: true
-                        };
-                        unsafeWindow.postMessage(replyMsg, '*');
-                        return;
-                    }
-                }
-
-                // Also intercept startRequestSubtitle (xhr_response mode)
-                if (msgType === 'startRequestSubtitle' && msg.from === 'inject' && msg.to === 'content-script') {
-                    const reqData = msg.data || {};
-                    const reqUrl = normalizeUrl(reqData.url || '');
-                    log(`startRequestSubtitle intercepted: url=${reqUrl?.substring(0, 80)}`);
                 }
 
                 if (msgType === 'requestSubtitle' && msg.from === 'content-script' && msg.to === 'inject') {
                     log(`requestSubtitle response (cs→inject): data type=${typeof msg.data}, length=${typeof msg.data === 'string' ? msg.data.length : 'N/A'}`);
                 }
 
-                if (msgType === 'subtitleResponse' && !itTranslationDetected) {
+                if (msgType === 'subtitleResponse') {
                     tryExtractSubtitleResponse(msg);
                 }
-
-                const data = msg.data;
-                const extractedUrl = extractVttUrl(data);
-                if (extractedUrl && vttCache.has(extractedUrl)) {
-                    event.stopImmediatePropagation();
-                    const vttTextCached = vttCache.get(extractedUrl);
-                    const dataUri = toDataUri(vttTextCached);
-                    _pmInterceptCount++;
-                    log(`postMessage #${_pmInterceptCount}: VTT URL → data:URI (~${(dataUri.length / 1024).toFixed(0)}KB)`);
-
-                    let cleanMsg = buildReplacedMsg(msg, extractedUrl, dataUri);
-                    cleanMsg._patched = true;
-
-                    if (typeof cloneInto === 'function') {
-                        try {
-                            cleanMsg = cloneInto(cleanMsg, unsafeWindow);
-                        } catch (e) { log(`cloneInto failed: ${e.message}`); }
-                    }
-
-                    unsafeWindow.postMessage(cleanMsg, '*');
-                }
             } catch (e) {
-                log(`postMessage intercept error: ${e.message}`);
+                log(`postMessage event listener error: ${e.message}`);
             }
         } else if (msg && typeof msg === 'object' && msg.eventType === '[frame-bridge]') {
             try {
@@ -1668,6 +1607,28 @@
             }
         }
     }, true);
+
+    const mergeCues = (existing, incoming) => {
+        const cueMap = new Map();
+        for (const cue of existing) {
+            const key = `${cue.start.toFixed(3)}-${cue.end.toFixed(3)}`;
+            cueMap.set(key, cue);
+        }
+        for (const cue of incoming) {
+            const key = `${cue.start.toFixed(3)}-${cue.end.toFixed(3)}`;
+            if (cueMap.has(key)) {
+                const existingCue = cueMap.get(key);
+                cueMap.set(key, {
+                    ...existingCue,
+                    ...cue,
+                    translation: cue.translation || existingCue.translation
+                });
+            } else {
+                cueMap.set(key, cue);
+            }
+        }
+        return Array.from(cueMap.values()).sort((a, b) => a.start - b.start);
+    };
 
     const tryExtractAttachSubtitle = (msg) => {
         try {
@@ -1688,17 +1649,13 @@
 
             if (bilingual.length > 0) {
                 log(`Extracted ${bilingual.length} translated cues from blocked attachSubtitle.`);
-                if (translatedCues.length > 0) {
-                    log(`Merging with existing ${translatedCues.length} cues.`);
-                    if (bilingual.length >= translatedCues.length) {
-                        translatedCues = bilingual;
-                    }
-                } else {
-                    translatedCues = bilingual;
-                }
+                const prevCount = translatedCues.length;
+                translatedCues = mergeCues(translatedCues, bilingual);
+                log(`Merged attachSubtitle cues. Count: ${prevCount} -> ${translatedCues.length}`);
+                
                 itTranslationDetected = true;
                 hideJWPlayerCaptions();
-                log('IT translation detected via attachSubtitle.');
+                log('IT translation active via attachSubtitle.');
                 if (isFirefox) startRender();
             }
         } catch (e) {
@@ -1729,7 +1686,10 @@
                     }
                     if (bilingual.length > 0) {
                         log(`IT translations found in subtitleResponse! ${bilingual.length} cues.`);
-                        translatedCues = bilingual;
+                        const prevCount = translatedCues.length;
+                        translatedCues = mergeCues(translatedCues, bilingual);
+                        log(`Merged subtitleResponse cues. Count: ${prevCount} -> ${translatedCues.length}`);
+                        
                         itTranslationDetected = true;
                         hideJWPlayerCaptions();
                         log('IT translations active.');
@@ -1751,7 +1711,10 @@
                         }));
                     if (bilingual.length > 0) {
                         log(`IT translations found in subtitleResponse (object)! ${bilingual.length} cues.`);
-                        translatedCues = bilingual;
+                        const prevCount = translatedCues.length;
+                        translatedCues = mergeCues(translatedCues, bilingual);
+                        log(`Merged subtitleResponse (object) cues. Count: ${prevCount} -> ${translatedCues.length}`);
+                        
                         itTranslationDetected = true;
                         hideJWPlayerCaptions();
                         log('IT translations active.');
@@ -1951,7 +1914,7 @@
         }
     }, 1000);
 
-    log('v11.6 ready. VTT auto-inject via <track> + cleaner proxy logic.');
+    log('v11.6+ ready. v11.6 base + proactive cache warm on first English detect.');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
     // Bridge message summary
@@ -2147,5 +2110,5 @@
         setTimeout(iframePlayerCheck, 15000);
     }
 
-    log(`v11.6 initialization complete. isInIframe=${isInIframe}`);
+    log(`v11.6+ initialization complete. isInIframe=${isInIframe}`);
 })();
