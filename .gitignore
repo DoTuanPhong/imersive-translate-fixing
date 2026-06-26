@@ -33,3 +33,5 @@ anisuge*
 *.vtt
 anime_info.json
 immersive_translate_full_user_config
+Full_User_config.json
+Full_User_config.backup.json

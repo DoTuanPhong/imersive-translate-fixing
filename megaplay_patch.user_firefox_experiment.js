@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Megaplay.buzz Immersive Translate Fix v11.6+
+// @name         Megaplay.buzz Immersive Translate Fix v11.6+ [EXPERIMENT document-mode]
 // @namespace    http://tampermonkey.net/
-// @version      11.6.3
-// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + shadow-aware translation sync guard + stale-loading recovery + iframe relay. Visual Console. No Google fallback.
+// @version      11.6-exp12-syncguard-recovery
+// @description  CONCLUSION build: behaves like v11.6, plus extra @match domains, a shadow-aware translation sync guard, and stale-loading recovery that reinjects the track when IT gets stuck on a cue.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
 // @match        *://anisuge.se/*
@@ -44,6 +44,59 @@
     const TRANSLATION_SYNC_MAX_PAUSE_MS = 12000;
     const TRANSLATION_SYNC_STALE_LOADING_MS = 2500;
     const TRANSLATION_SYNC_REINJECT_COOLDOWN_MS = 12000;
+
+    // ── EXPERIMENT FLAG ───────────────────────────────────────────────
+    // Hypothesis: the 2-3 min stalls in v11.6+ are caused by injecting a
+    // silent data:URI <track>, which bypasses IT's VTT *fetch* hook and forces
+    // IT to attach to a native TextTrack — translating windowed/cuechange-driven
+    // (one batch per lookahead window, each wrapped in IT's ~101s timeout+retry).
+    // v11.5 was smooth because IT received the whole VTT as a fetched *document*.
+    //
+    // When true: (1) do NOT strip JWPlayer's native VTT tracks, so JWPlayer
+    // fetches the VTT over the network and IT's fetch/XHR hook can serve the
+    // full document; (2) do NOT inject our own data:URI <track>.
+    // Flip to false to get the exact v11.6+ behavior back.
+    // CONCLUSION after exp1-8: document-mode is NOT viable on Firefox in this
+    // iframe/JWPlayer setup — IT's content-script returns empty for every subtitle
+    // request path (URL fetch blocked by Referer; xhr_response/responseText also
+    // returns {}). The only path that actually translates is injecting the VTT as a
+    // <track> in the DOM (v11.6), where content_main reads the cues directly. So this
+    // flag is now FALSE = behaves like v11.6 (reliable translation). Fix the 2-3 min
+    // stall by lowering requestTimeout in the gemma service settings (~15s), not here.
+    const EXPERIMENT_DOCUMENT_MODE = false;
+
+    // Document-mode strategy. IT is installed as an EXTENSION, so its content-script
+    // can fetch cross-origin (host permissions) — the only blocker for the VTT server
+    // is the Referer (anti-hotlink), which GM_webRequest already fixes. inject.js's
+    // translateSubtitle expects requestSubtitle to return the *translated* VTT (the
+    // content-script fetches+translates and IT replaces the player's response with it).
+    // So the right move is to GET OUT OF THE WAY: don't answer requestSubtitle (we'd
+    // return the original and kill translation) and don't proxy/dispatch the VTT
+    // response ourselves (we'd pre-empt IT's translated response). Only fix Referer.
+    // Set false to fall back to the self-feed approach (exp2-4).
+    const EXP_LET_IT_DO_EVERYTHING = true;
+
+    // ENGINE MODE (exp6): IT does NOT reliably catch the player's VTT request in this
+    // iframe/JWPlayer setup (exp5: VTT loaded, but IT never sent requestSubtitle). The
+    // ONLY thing that makes IT translate is us calling fetch(vttUrl) ourselves — and
+    // inject.js's translateSubtitleWithFetch then RETURNS a Response whose body is the
+    // *translated* bilingual VTT. So we use IT purely as a translation engine: trigger
+    // it, READ the translated Response, and render it with our own overlay. Whole-doc
+    // translation in one shot (smooth), deterministic trigger (reliable), no response
+    // fight with the player. Requires IT's content-script fetch of the VTT to succeed
+    // (Referer via GM_webRequest). Set false to disable.
+    const EXP_ENGINE_MODE = false; // (document-mode only; inert when DOCUMENT_MODE=false)
+
+    // XHR_RESPONSE MODE (exp7): the real wall (exp6) is that IT's content-script can't
+    // FETCH the VTT (Referer/hotlink) — so it must be handed the original TEXT. IT's
+    // only text-accepting path is translateSubtitleWithResponse, used when the rule's
+    // hookType is "xhr_response" (set in user_rules.json). In that mode IT reads the
+    // XHR's responseText and sends it to the content-script to translate (no fetch →
+    // no Referer wall), then renders its own bilingual overlay. So here we SERVE the
+    // original VTT as the XHR response (re-enabled below) and otherwise stay out of the
+    // way (no requestSubtitle answer, no self-fetch, no track inject). Requires
+    // user_rules.json subtitleRule.add.hookType = "xhr_response".
+    const EXP_XHR_RESPONSE_MODE = false; // (document-mode only; inert when DOCUMENT_MODE=false)
 
     let visualConsoleContainer = null;
     let visualConsoleBody = null;
@@ -607,7 +660,71 @@
     let _bridgeBlockedCount = 0;
     let _bridgeLastCount = 0;
     const vttCache = new Map();
- 
+
+    // EXPERIMENT document-mode: deterministic IT trigger state.
+    let itFetchOverridden = false; // true once IT has actually overridden window.fetch
+    let _itDocTriggerCount = 0;    // how many times we proactively fed IT the VTT
+    let _itDocTriggerTimer = null;
+
+    // Drive IT deterministically: once IT has hooked fetch AND we know the English
+    // VTT URL, call fetch(vttUrl) THROUGH IT so it sees the VTT and translates the
+    // whole document (our requestSubtitle responder serves the full file). This
+    // removes the dependence on JWPlayer's request timing that made detection flaky.
+    function triggerItDocumentMode(reason) {
+        if (!EXPERIMENT_DOCUMENT_MODE || (!EXP_ENGINE_MODE && !EXP_XHR_RESPONSE_MODE)) return;
+        if (!itFetchOverridden || !vttUrl) return;
+        if (itTranslationDetected) return;
+        if (_itDocTriggerCount >= 4) return;
+        if (_itDocTriggerTimer) return;
+        _itDocTriggerTimer = setTimeout(() => {
+            _itDocTriggerTimer = null;
+            if (!itFetchOverridden || !vttUrl || itTranslationDetected) return;
+            _itDocTriggerCount++;
+            const target = vttUrl;
+
+            if (EXP_XHR_RESPONSE_MODE) {
+                // xhr_response: fire an XHR for the VTT so IT's xhr hook catches it.
+                // IT (isOnlyResponse) reads the responseText (our proxy serves the
+                // ORIGINAL VTT), hands the TEXT to its content-script to translate
+                // (no fetch → no Referer wall), and renders its own bilingual overlay.
+                log(`[exp] xhr_response: triggering IT via XHR(vttUrl) #${_itDocTriggerCount} (${reason})`);
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', target);
+                    xhr.send();
+                } catch (e) {
+                    log(`[exp] xhr trigger error: ${e.message}`);
+                }
+            } else {
+                // engine mode (fetch): read IT's translated Response and render ourselves.
+                log(`[exp] engine: feeding IT via fetch(vttUrl) #${_itDocTriggerCount} (${reason})`);
+                try {
+                    const f = unsafeWindow.fetch;
+                    Promise.resolve(f(target, {}))
+                        .then(resp => (resp && typeof resp.text === 'function') ? resp.text() : null)
+                        .then(text => {
+                            if (!text) { log('[exp] engine: empty response from IT fetch'); return; }
+                            const head = text.substring(0, 160).replace(/\n/g, '\\n');
+                            log(`[exp] engine: IT fetch returned ${text.length} bytes. head="${head}"`);
+                            tryExtractSubtitleResponse({ data: text });
+                            if (itTranslationDetected) {
+                                log(`[exp] engine: bilingual cues extracted (${translatedCues.length}). Rendering via overlay.`);
+                            } else {
+                                log('[exp] engine: response had NO bilingual cues (likely original/untranslated).');
+                            }
+                        })
+                        .catch(e => log(`[exp] engine: fetch read error: ${e.message}`));
+                } catch (e) {
+                    log(`[exp] engine trigger error: ${e.message}`);
+                }
+            }
+            // Backup re-trigger if IT hasn't produced a translation yet.
+            if (_itDocTriggerCount < 4) {
+                setTimeout(() => triggerItDocumentMode('backup re-trigger'), 4000);
+            }
+        }, _itDocTriggerCount === 0 ? 1000 : 0);
+    }
+
     let itHookReady = false;
     let itHookResolve = null;
     let itHookPromise = new Promise(resolve => {
@@ -656,6 +773,10 @@
         itTranslationDetected = false;
         fetchInProgress = false;
         vttCache.clear();
+        // Allow document-mode to re-trigger IT for the new episode (IT's fetch
+        // stays hooked, so itFetchOverridden is intentionally left as-is).
+        _itDocTriggerCount = 0;
+        if (_itDocTriggerTimer) { clearTimeout(_itDocTriggerTimer); _itDocTriggerTimer = null; }
         if (overlayContainer) {
             try {
                 overlayContainer.remove();
@@ -756,6 +877,10 @@
                 if (val && val !== ourXhrSend && val !== ourXhrOpen) {
                     log(`Detected IT overriding XMLHttpRequest.prototype.${prop}`);
                     triggerItHookReady();
+                    // xhr_response mode: IT only installs an XHR hook (no fetch). Mark
+                    // the transport as hooked so our deterministic XHR trigger can fire.
+                    itFetchOverridden = true;
+                    triggerItDocumentMode('IT xhr hooked');
                 }
             }
             return origDefineProperty.apply(this, arguments);
@@ -772,7 +897,16 @@
                 return currentFetch;
             },
             set(newFetch) {
-                if (typeof newFetch === 'function' && newFetch !== ourFetchWrapper) {
+                if (EXPERIMENT_DOCUMENT_MODE && typeof newFetch === 'function' && newFetch !== ourFetchWrapper) {
+                    // Document-mode: do NOT bypass IT's fetch. We WANT IT to see the
+                    // VTT request so it sends requestSubtitle (which our outbound
+                    // responder answers with the full VTT → IT translates the document).
+                    log(`Detected IT overriding window.fetch (document-mode: no bypass)`);
+                    triggerItHookReady();
+                    currentFetch = newFetch;
+                    itFetchOverridden = true;
+                    triggerItDocumentMode('IT fetch hooked');
+                } else if (typeof newFetch === 'function' && newFetch !== ourFetchWrapper) {
                     log(`Detected IT overriding window.fetch — wrapping with VTT bypass`);
                     triggerItHookReady();
                     // Wrap IT's fetch hook: serve cached VTT directly so IT's
@@ -902,7 +1036,7 @@
                                     t.file && t.file.includes('.vtt') &&
                                     (!t.kind || t.kind === 'subtitles' || t.kind === 'captions')
                                 );
-                                if (vttSubTracks.length > 0) {
+                                if (!EXPERIMENT_DOCUMENT_MODE && vttSubTracks.length > 0) {
                                     const nonVttTracks = tracks.filter(t =>
                                         !t.file || !t.file.includes('.vtt') ||
                                         (t.kind && t.kind !== 'subtitles' && t.kind !== 'captions')
@@ -981,7 +1115,7 @@
                                     t.file && t.file.includes('.vtt') &&
                                     (!t.kind || t.kind === 'subtitles' || t.kind === 'captions')
                                 );
-                                if (vttSubTracksLoad.length > 0) {
+                                if (!EXPERIMENT_DOCUMENT_MODE && vttSubTracksLoad.length > 0) {
                                     const nonVttTracksLoad = tracks.filter(t =>
                                         !t.file || !t.file.includes('.vtt') ||
                                         (t.kind && t.kind !== 'subtitles' && t.kind !== 'captions')
@@ -1045,6 +1179,7 @@
             if (vttUrlIsEnglish && !vttText && !fetchInProgress) {
                 setTimeout(() => fetchAndCacheVtt(), 0);
             }
+            triggerItDocumentMode('VTT url known');
         } else if (isEng && !vttUrlIsEnglish) {
             vttUrl = norm;
             vttUrlIsEnglish = true;
@@ -1056,6 +1191,7 @@
             setTimeout(() => {
                 fetchAndCacheVtt();
             }, 100);
+            triggerItDocumentMode('VTT upgraded to English');
         }
     };
 
@@ -1208,7 +1344,9 @@
         }
 
         // lostproject.club VTT: inject Referer via GM_xmlhttpRequest
-        if (VTT_FETCH_REGEX.test(urlStr)) {
+        // (document let-IT mode: do NOT proxy — let the request reach the network so
+        // GM_webRequest sets Referer and IT can intercept + replace with translated VTT)
+        if (!(EXPERIMENT_DOCUMENT_MODE && EXP_LET_IT_DO_EVERYTHING) && VTT_FETCH_REGEX.test(urlStr)) {
             const normUrl = normalizeUrl(urlStr);
 
             // Serve from cache if already fetched
@@ -1343,7 +1481,7 @@
         // (which run on the prototype AFTER our hook) see a non-matching URL
         // and skip requestSubtitle (preventing the 30-second timeout).
         const urlToCheck = this._url || url;
-        if (typeof urlToCheck === 'string' && urlToCheck.includes('.vtt') && VTT_FETCH_REGEX.test(urlToCheck)) {
+        if (!EXPERIMENT_DOCUMENT_MODE && typeof urlToCheck === 'string' && urlToCheck.includes('.vtt') && VTT_FETCH_REGEX.test(urlToCheck)) {
             const normUrl = normalizeUrl(urlToCheck);
             const cachedContent = (vttText && normUrl === vttUrl) ? vttText : vttCache.get(normUrl);
             if (cachedContent) {
@@ -1379,7 +1517,11 @@
             return;
         }
 
-        if (VTT_FETCH_REGEX.test(urlStr)) {
+        // xhr_response mode: SERVE the original VTT as the XHR response so IT's
+        // xhr_response hook reads it and translates the provided text (no content-script
+        // fetch → no Referer wall). Otherwise (let-IT mode) stay out of the way.
+        const _serveXhrVtt = EXP_XHR_RESPONSE_MODE || !(EXPERIMENT_DOCUMENT_MODE && EXP_LET_IT_DO_EVERYTHING);
+        if (_serveXhrVtt && VTT_FETCH_REGEX.test(urlStr)) {
             const normUrl = normalizeUrl(urlStr);
 
             // Serve from cache if already fetched
@@ -1470,7 +1612,9 @@
                     video.dataset.immersiveTranslateVideoId = 'anisuge-' + Date.now();
                     if (video.crossOrigin !== 'anonymous') video.crossOrigin = 'anonymous';
 
-                    injectVttTrack(video, vttText, { reason: 'initial fetch' });
+                    if (!EXPERIMENT_DOCUMENT_MODE) {
+                        injectVttTrack(video, vttText, { reason: 'initial fetch' });
+                    }
                 }
 
                 startITTranslationMonitor();
@@ -1585,6 +1729,85 @@
                     if (msgType === 'getConfig' && msg.id) {
                         _pendingGetConfigIds.add(msg.id);
                     }
+
+                    // ── EXPERIMENT document-mode: answer requestSubtitle with the
+                    // full cached VTT so IT translates the whole document (smooth),
+                    // instead of content-script fetching it and failing on CORS.
+                    // We can't reliably stopImmediatePropagation across compartments
+                    // on Firefox, but inject's sendMessage resolves on the FIRST reply
+                    // with a matching id, so posting our reply fast wins the race.
+                    if (EXPERIMENT_DOCUMENT_MODE && !EXP_LET_IT_DO_EVERYTHING && msgType === 'requestSubtitle' && msg.id) {
+                        const reqData = msg.data || {};
+                        let targetUrl = normalizeUrl(reqData.url || '');
+                        if (!targetUrl && reqData.fetchInfo) {
+                            try {
+                                const fi = JSON.parse(reqData.fetchInfo);
+                                targetUrl = normalizeUrl(fi?.input?.url || '');
+                            } catch (e) { }
+                        }
+                        // Always prefer our pre-detected English VTT
+                        if (vttUrl && isEnglishVtt(vttUrl) && targetUrl && targetUrl.includes('.vtt') && !isEnglishVtt(targetUrl)) {
+                            log(`[exp] requestSubtitle: redirecting non-English → English VTT`);
+                            targetUrl = vttUrl;
+                        }
+
+                        const replyWithText = (text) => {
+                            unsafeWindow.postMessage({
+                                eventType: IM_BRIDGE_EVENT,
+                                to: 'inject',
+                                from: 'content-script',
+                                type: 'requestSubtitle',
+                                data: text,
+                                id: msg.id,
+                                isAsync: true
+                            }, '*');
+                        };
+
+                        // Serve from prefetched English VTT text
+                        if (vttText && vttUrl && (targetUrl === vttUrl || !targetUrl)) {
+                            log(`[exp] requestSubtitle: serving prefetched VTT (${vttText.length} bytes) id=${msg.id}`);
+                            replyWithText(vttText);
+                            return;
+                        }
+                        // Serve from cache (exact or partial match)
+                        let cachedText = vttCache.get(targetUrl);
+                        if (!cachedText && targetUrl) {
+                            for (const [u, v] of vttCache.entries()) {
+                                if (u.includes('.vtt') && (targetUrl.includes(u) || u.includes(targetUrl.split('?')[0]))) {
+                                    cachedText = v; break;
+                                }
+                            }
+                        }
+                        if (cachedText) {
+                            log(`[exp] requestSubtitle: serving cached VTT (${cachedText.length} bytes) id=${msg.id}`);
+                            replyWithText(cachedText);
+                            return;
+                        }
+                        // Not cached yet → fetch with Referer, cache, then reply
+                        if (targetUrl && targetUrl.includes('.vtt')) {
+                            log(`[exp] requestSubtitle: no cache, fetching ${targetUrl.substring(0, 70)} id=${msg.id}`);
+                            const replyId = msg.id;
+                            GM_xmlhttpRequest({
+                                method: 'GET',
+                                url: targetUrl,
+                                headers: { 'Referer': location.origin + '/', 'Origin': location.origin },
+                                onload: (resp) => {
+                                    if (resp.status === 200 && resp.responseText) {
+                                        vttCache.set(targetUrl, resp.responseText);
+                                        log(`[exp] requestSubtitle: fetched & served (${resp.responseText.length} bytes) id=${replyId}`);
+                                        unsafeWindow.postMessage({
+                                            eventType: IM_BRIDGE_EVENT, to: 'inject', from: 'content-script',
+                                            type: 'requestSubtitle', data: resp.responseText, id: replyId, isAsync: true
+                                        }, '*');
+                                    } else {
+                                        log(`[exp] requestSubtitle: fetch failed (${resp.status}) id=${replyId}`);
+                                    }
+                                },
+                                onerror: () => log(`[exp] requestSubtitle: fetch error id=${replyId}`)
+                            });
+                        }
+                    }
+
                     // Log outbound messages for diagnostics (skip noisy ones)
                     if (msgType !== 'isContentReady') {
                         log(`Bridge (inject→cs) "${msgType}" id=${msg.id || 'none'}`);
@@ -2086,7 +2309,7 @@
                 if (loadingKey
                     && now - translationSyncLoadingSince >= TRANSLATION_SYNC_STALE_LOADING_MS
                     && now - translationSyncLastRecoveryAt >= TRANSLATION_SYNC_REINJECT_COOLDOWN_MS) {
-                    if (injectVttTrack(video, vttText, { replace: true, reason: 'stale loading recovery' })) {
+                    if (!EXPERIMENT_DOCUMENT_MODE && injectVttTrack(video, vttText, { replace: true, reason: 'stale loading recovery' })) {
                         translationSyncLastRecoveryAt = now;
                         log(`Translation sync guard reinjected track after stale loading on cue: ${loadingKey.substring(0, 80)}`);
                     }
