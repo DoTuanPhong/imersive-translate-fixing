@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Megaplay.buzz Immersive Translate Fix v11.6+ No Anti-Debug
 // @namespace    http://tampermonkey.net/
-// @version      11.6
-// @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + TextTrack monitor + iframe relay. Visual Console. No Google fallback.
+// @version      11.6.4
+// @description  Pure IT engine fix without anti-debug hooks: fetch override + Referer injection + postMessage interception + shadow-aware translation sync guard + stale-loading & untranslated-cue recovery + iframe relay. Visual Console. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
+// @match        *://anisuge.se/*
+// @match        *://animesuge.re/*
 // @match        *://animesuge.cz/*
+// @match        *://animesugez.tv/*
 // @match        *://megaplay.buzz/*
 // @match        *://vidwish.live/*
 // @match        *://1anime.site/*
@@ -35,6 +38,18 @@
 
     let visualConsoleContainer = null;
     let visualConsoleBody = null;
+
+    const ENABLE_TEXTTRACK_MONITOR_DEBUG = false;
+    const ENABLE_BRIDGE_DIAGNOSTICS = false;
+    const ENABLE_TRANSLATION_SYNC_GUARD = true;
+    const TRANSLATION_SYNC_POLL_MS = 80;
+    const TRANSLATION_SYNC_PAUSE_DELAY_MS = 80;
+    const TRANSLATION_SYNC_RESUME_DELAY_MS = 80;
+    const TRANSLATION_SYNC_MAX_PAUSE_MS = 12000;
+    const TRANSLATION_SYNC_STALE_LOADING_MS = 2500;
+    const TRANSLATION_SYNC_REINJECT_COOLDOWN_MS = 12000;
+    const TRANSLATION_SYNC_UNTRANSLATED_MS = 3500;
+    const TRANSLATION_SYNC_PERSIST_REINJECT_COOLDOWN_MS = 10000;
 
     const initVisualConsole = () => {
         if (isInIframe || visualConsoleContainer) return;
@@ -318,6 +333,14 @@
     let renderInterval = null;
     let itTranslationDetected = false;
     let textTrackMonitorInterval = null;
+    let translationSyncInterval = null;
+    let translationSyncResumeTimer = null;
+    let translationSyncLoadingSince = 0;
+    let translationSyncPausedSince = 0;
+    let translationSyncPausedVideo = null;
+    let translationSyncLoadingKey = '';
+    let translationSyncLastRecoveryAt = 0;
+    let translationSyncUntranslatedSince = 0;
     let _bridgeLastSummary = '';
     let _bridgeMsgTypes = {};
     let _bridgeBlockedCount = 0;
@@ -382,12 +405,21 @@
         try {
             const oldVideo = document.querySelector('video');
             if (oldVideo) {
-                const injected = oldVideo.querySelectorAll('track[data-it-fix-injected="1"]');
-                injected.forEach(t => t.remove());
-                if (injected.length > 0) log(`Removed ${injected.length} injected track(s).`);
+                const removedCount = removeInjectedTracks(oldVideo);
+                if (removedCount > 0) log(`Removed ${removedCount} injected track(s).`);
             }
         } catch (e) {}
         currentDisplay = { en: '', vi: '' };
+        translationSyncLoadingSince = 0;
+        translationSyncPausedSince = 0;
+        translationSyncPausedVideo = null;
+        translationSyncLoadingKey = '';
+        translationSyncLastRecoveryAt = 0;
+        translationSyncUntranslatedSince = 0;
+        if (translationSyncResumeTimer) {
+            clearTimeout(translationSyncResumeTimer);
+            translationSyncResumeTimer = null;
+        }
         resetItHookGate();
         startITTranslationMonitor();
         startVttBootWatcher();
@@ -723,6 +755,45 @@
         return 'data:text/vtt;charset=utf-8;base64,' + b64;
     };
 
+    const removeInjectedTracks = (video) => {
+        if (!video) return 0;
+        const injected = [...video.querySelectorAll('track[data-it-fix-injected="1"]')];
+        injected.forEach(track => {
+            try { track.remove(); } catch (e) {}
+        });
+        return injected.length;
+    };
+
+    const injectVttTrack = (video, text, options = {}) => {
+        if (!video || !text) return false;
+        const { replace = false, reason = 'inject' } = options;
+        try {
+            if (replace) {
+                removeInjectedTracks(video);
+            } else {
+                const hasOurTrack = [...video.querySelectorAll('track[src]')].some(track =>
+                    track.dataset.itFixInjected === '1' || (track.src || '').startsWith('data:text/vtt;charset=utf-8;base64,')
+                );
+                if (hasOurTrack) return false;
+            }
+            const vttWithNonce = `${text.trimEnd()}\n\nNOTE it-fix ${reason} ${Date.now()}`;
+            const dataUri = toDataUri(vttWithNonce);
+            const newTrack = document.createElement('track');
+            newTrack.kind = 'subtitles';
+            newTrack.label = 'English (IT-Fix)';
+            newTrack.srclang = 'en';
+            newTrack.default = true;
+            newTrack.src = dataUri;
+            newTrack.dataset.itFixInjected = '1';
+            video.appendChild(newTrack);
+            log(`Injected <track> with VTT data:URI (${(dataUri.length / 1024).toFixed(0)}KB, reason=${reason}).`);
+            return true;
+        } catch (e) {
+            log(`Track injection error: ${e.message}`);
+            return false;
+        }
+    };
+
     const parseVTT = (text) => {
         if (!text) return [];
         const lines = text.replace(/\r\n/g, '\n').split('\n');
@@ -746,6 +817,14 @@
         if (p.length === 3) return parseFloat(p[0]) * 3600 + parseFloat(p[1]) * 60 + parseFloat(p[2]);
         if (p.length === 2) return parseFloat(p[0]) * 60 + parseFloat(p[1]);
         return parseFloat(p[0]);
+    };
+
+    const getCueAtTime = (timeSec) => {
+        if (!Number.isFinite(timeSec) || !Array.isArray(cues) || cues.length === 0) return null;
+        for (const cue of cues) {
+            if (timeSec >= cue.start && timeSec <= cue.end) return cue;
+        }
+        return null;
     };
 
     // ── 3.5 Early window.fetch Override ───────────────────────────────
@@ -1049,29 +1128,8 @@
                     if (video.crossOrigin !== 'anonymous') video.crossOrigin = 'anonymous';
 
                     // Inject VTT as data: URI track element so JW Player picks it up
-                    // regardless of CORS. Only do this if no English track exists yet
-                    // with the same content (to avoid duplicates on re-fetch).
-                    try {
-                        const existingTracks = [...video.querySelectorAll('track[src]')];
-                        const dataUri = toDataUri(vttText);
-                        const ourMarker = 'data:text/vtt;charset=utf-8;base64,';
-                        const hasOurTrack = existingTracks.some(t =>
-                            (t.src || '').startsWith(ourMarker)
-                        );
-                        if (!hasOurTrack) {
-                            const newTrack = document.createElement('track');
-                            newTrack.kind = 'subtitles';
-                            newTrack.label = 'English (IT-Fix)';
-                            newTrack.srclang = 'en';
-                            newTrack.default = true;
-                            newTrack.src = dataUri;
-                            newTrack.dataset.itFixInjected = '1';
-                            video.appendChild(newTrack);
-                            log(`Injected <track> with VTT data:URI (${(dataUri.length / 1024).toFixed(0)}KB).`);
-                        }
-                    } catch (e) {
-                        log(`Track injection error: ${e.message}`);
-                    }
+                    // regardless of CORS.
+                    injectVttTrack(video, vttText, { reason: 'initial fetch' });
                 }
 
                 startITTranslationMonitor();
@@ -1503,6 +1561,14 @@
 
     // ── 7. IT Translation Monitor (TextTrack-based) ──────────────────
     const startITTranslationMonitor = () => {
+        if (!ENABLE_TEXTTRACK_MONITOR_DEBUG) {
+            if (textTrackMonitorInterval) {
+                clearInterval(textTrackMonitorInterval);
+                textTrackMonitorInterval = null;
+            }
+            return;
+        }
+
         if (textTrackMonitorInterval) clearInterval(textTrackMonitorInterval);
 
         log('Starting TextTrack monitor for IT translations...');
@@ -1662,9 +1728,233 @@
         }
     };
 
+    const isElementVisible = (el) => {
+        if (!el || !el.isConnected) return false;
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none'
+            && style.visibility !== 'hidden'
+            && style.opacity !== '0'
+            && el.getClientRects().length > 0;
+    };
+
+    const queryAllDeep = (selector, root = document) => {
+        const results = [];
+        const visited = new Set();
+        const walk = (node) => {
+            if (!node || visited.has(node)) return;
+            visited.add(node);
+            if (typeof node.querySelectorAll === 'function') {
+                results.push(...node.querySelectorAll(selector));
+            }
+            const elements = typeof node.querySelectorAll === 'function'
+                ? node.querySelectorAll('*')
+                : [];
+            for (const el of elements) {
+                if (el.shadowRoot) walk(el.shadowRoot);
+            }
+        };
+        walk(root);
+        return results;
+    };
+
+    const getVisibleItCaptionWindow = () => {
+        const windows = queryAllDeep('#imt-caption-window');
+        for (const win of windows) {
+            if (isElementVisible(win)) return win;
+        }
+        return null;
+    };
+
+    const getCaptionWindowContentRoot = (captionWindow) => {
+        if (!captionWindow) return null;
+        return captionWindow.shadowRoot || captionWindow;
+    };
+
+    const getItTranslationLoadingState = () => {
+        const captionWindow = getVisibleItCaptionWindow();
+        if (!captionWindow) {
+            return { loading: false, sourceText: '', targetText: '', loadingText: '' };
+        }
+
+        const contentRoot = getCaptionWindowContentRoot(captionWindow);
+        if (!contentRoot) {
+            return { loading: false, sourceText: '', targetText: '', loadingText: '' };
+        }
+
+        const sourceText = Array.from(contentRoot.querySelectorAll('.source-cue'))
+            .map(node => (node.textContent || '').trim())
+            .filter(Boolean)
+            .join(' ');
+        const targetText = Array.from(contentRoot.querySelectorAll('.target-cue'))
+            .map(node => (node.textContent || '').trim())
+            .filter(Boolean)
+            .join(' ');
+        const loadingText = Array.from(contentRoot.querySelectorAll('.loading-text'))
+            .filter(isElementVisible)
+            .map(node => (node.textContent || '').trim())
+            .filter(Boolean)
+            .join(' ');
+
+        return {
+            loading: !!sourceText && !targetText && !!loadingText,
+            sourceText,
+            targetText,
+            loadingText,
+        };
+    };
+
+    const findITTranslatedTrack = (video) => {
+        if (!video || !video.textTracks) return null;
+        for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+            const createBy = track.createBy || track.getAttribute?.('data-create-by');
+            if (createBy && /^(?:imt|immersive[-_]translate|it[-_]subtitle)/i.test(String(createBy))) {
+                return track;
+            }
+        }
+        for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+            const cues = track.cues;
+            if (!cues) continue;
+            for (let j = 0; j < cues.length; j++) {
+                const t = (cues[j].text || '');
+                if (t.length > 8 && /\p{Script=Latin}/u.test(t) && t.includes('\n')) return track;
+            }
+        }
+        return null;
+    };
+
+    const isActiveCueUntranslated = (video) => {
+        const itTrack = findITTranslatedTrack(video);
+        if (!itTrack || !itTrack.cues) return false;
+        const now = video.currentTime;
+        const originalCue = getCueAtTime(now);
+        const originalText = originalCue?.text?.trim() || '';
+        for (let i = 0; i < itTrack.cues.length; i++) {
+            const cue = itTrack.cues[i];
+            if (now < cue.startTime || now > cue.endTime) continue;
+            const cueText = (cue.text || '').trim();
+            if (!cueText) continue;
+            const parts = cueText.split(/\r?\n/);
+            const afterNewline = parts.length > 1 ? parts.slice(1).join(' ').trim() : '';
+            const isErrored = afterNewline === 'translateFail' || afterNewline === 'Translation failed' || /^translateFail[:.]/i.test(afterNewline);
+            const hasTranslated = /\p{L}/u.test(afterNewline || cueText) && !/^[A-Za-z0-9\s.,!?'"`-]+$/.test(afterNewline || cueText);
+            const missingTranslation = !hasTranslated || isErrored;
+            if (missingTranslation && originalText) {
+                const containsOriginal = cueText.includes(originalText);
+                if (containsOriginal || cueText === originalText) return true;
+            }
+        }
+        return false;
+    };
+
+    const startTranslationSyncGuard = () => {
+        if (!ENABLE_TRANSLATION_SYNC_GUARD) return;
+        if (translationSyncInterval) clearInterval(translationSyncInterval);
+
+        translationSyncInterval = setInterval(() => {
+            const video = document.querySelector('video');
+            if (!video) {
+                translationSyncLoadingSince = 0;
+                translationSyncPausedSince = 0;
+                translationSyncPausedVideo = null;
+                if (translationSyncResumeTimer) {
+                    clearTimeout(translationSyncResumeTimer);
+                    translationSyncResumeTimer = null;
+                }
+                return;
+            }
+
+            const now = Date.now();
+            const state = getItTranslationLoadingState();
+            const activeCue = getCueAtTime(video.currentTime);
+            const loadingKey = state.sourceText || activeCue?.text || '';
+
+            if (state.loading) {
+                if (!translationSyncLoadingSince || loadingKey !== translationSyncLoadingKey) {
+                    translationSyncLoadingSince = now;
+                    translationSyncLoadingKey = loadingKey;
+                }
+
+                if (!translationSyncPausedVideo && !video.paused && now - translationSyncLoadingSince >= TRANSLATION_SYNC_PAUSE_DELAY_MS) {
+                    translationSyncPausedVideo = video;
+                    translationSyncPausedSince = now;
+                    if (translationSyncResumeTimer) {
+                        clearTimeout(translationSyncResumeTimer);
+                        translationSyncResumeTimer = null;
+                    }
+                    try {
+                        video.pause();
+                        log('Translation sync guard paused video while IT catches up.');
+                    } catch (e) {}
+                } else if (translationSyncPausedVideo && now - translationSyncPausedSince >= TRANSLATION_SYNC_MAX_PAUSE_MS) {
+                    const pausedVideo = translationSyncPausedVideo;
+                    translationSyncPausedVideo = null;
+                    translationSyncPausedSince = 0;
+                    translationSyncLoadingSince = 0;
+                    if (translationSyncResumeTimer) clearTimeout(translationSyncResumeTimer);
+                    translationSyncResumeTimer = setTimeout(() => {
+                        translationSyncResumeTimer = null;
+                        if (!pausedVideo.isConnected || !pausedVideo.paused) return;
+                        Promise.resolve(pausedVideo.play()).then(() => {
+                            log('Translation sync guard hit max wait and resumed video.');
+                        }).catch(() => {});
+                    }, TRANSLATION_SYNC_RESUME_DELAY_MS);
+                }
+
+                if (loadingKey
+                    && now - translationSyncLoadingSince >= TRANSLATION_SYNC_STALE_LOADING_MS
+                    && now - translationSyncLastRecoveryAt >= TRANSLATION_SYNC_REINJECT_COOLDOWN_MS) {
+                    if (injectVttTrack(video, vttText, { replace: true, reason: 'stale loading recovery' })) {
+                        translationSyncLastRecoveryAt = now;
+                        log(`Translation sync guard reinjected track after stale loading on cue: ${loadingKey.substring(0, 80)}`);
+                    }
+                }
+                return;
+            }
+
+            translationSyncLoadingSince = 0;
+            translationSyncLoadingKey = '';
+            if (!translationSyncPausedVideo && isActiveCueUntranslated(video)) {
+                if (!translationSyncUntranslatedSince) {
+                    translationSyncUntranslatedSince = now;
+                }
+                if (now - translationSyncUntranslatedSince >= TRANSLATION_SYNC_UNTRANSLATED_MS
+                    && now - translationSyncLastRecoveryAt >= TRANSLATION_SYNC_PERSIST_REINJECT_COOLDOWN_MS) {
+                    if (injectVttTrack(video, vttText, { replace: true, reason: 'untranslated active cue recovery' })) {
+                        translationSyncLastRecoveryAt = now;
+                        translationSyncUntranslatedSince = 0;
+                        log('Translation sync guard reinjected track for stuck untranslated active cue.');
+                    }
+                }
+            } else if (translationSyncUntranslatedSince) {
+                translationSyncUntranslatedSince = 0;
+            }
+            if (!translationSyncPausedVideo) return;
+
+            const pausedVideo = translationSyncPausedVideo;
+            translationSyncPausedVideo = null;
+            translationSyncPausedSince = 0;
+
+            if (translationSyncResumeTimer) {
+                clearTimeout(translationSyncResumeTimer);
+            }
+            translationSyncResumeTimer = setTimeout(() => {
+                translationSyncResumeTimer = null;
+                if (!pausedVideo.isConnected || !pausedVideo.paused) return;
+                const latestState = getItTranslationLoadingState();
+                if (latestState.loading) return;
+                Promise.resolve(pausedVideo.play()).then(() => {
+                    log('Translation sync guard resumed video.');
+                }).catch(() => {});
+            }, TRANSLATION_SYNC_RESUME_DELAY_MS);
+        }, TRANSLATION_SYNC_POLL_MS);
+    };
+
     // ── 8. Boot ──────────────────────────────────────────────────────
     findVtt();
     startVttBootWatcher();
+    startTranslationSyncGuard();
 
     // Monitor video element changes (source changes, new element creation)
     let lastVideoElement = null;
@@ -1691,26 +1981,28 @@
     log('v11.6+ ready. v11.6 base + proactive cache warm on first English detect (no anti-debug).');
 
     // ── 9. Diagnostic monitors ─────────────────────────────────────────
-    // Bridge message summary
-    setInterval(() => {
-        const types = Object.entries(_bridgeMsgTypes);
-        if (types.length === 0 && _bridgeBlockedCount === 0) return;
-        const summary = types.map(([k, v]) => `${k}:${v}`).join(', ');
-        const blockedInfo = _bridgeBlockedCount > 0 ? ` [BLOCKED: ${_bridgeBlockedCount}]` : '';
-        if ((summary + blockedInfo) !== _bridgeLastSummary) {
-            _bridgeLastSummary = summary + blockedInfo;
-            log(`Bridge messages seen: ${summary}${blockedInfo}`);
-        }
-    }, 10000);
+    if (ENABLE_BRIDGE_DIAGNOSTICS) {
+        // Bridge message summary
+        setInterval(() => {
+            const types = Object.entries(_bridgeMsgTypes);
+            if (types.length === 0 && _bridgeBlockedCount === 0) return;
+            const summary = types.map(([k, v]) => `${k}:${v}`).join(', ');
+            const blockedInfo = _bridgeBlockedCount > 0 ? ` [BLOCKED: ${_bridgeBlockedCount}]` : '';
+            if ((summary + blockedInfo) !== _bridgeLastSummary) {
+                _bridgeLastSummary = summary + blockedInfo;
+                log(`Bridge messages seen: ${summary}${blockedInfo}`);
+            }
+        }, 10000);
 
-    // Bridge inactivity detection
-    setInterval(() => {
-        const total = Object.values(_bridgeMsgTypes).reduce((a, b) => a + b, 0);
-        if (total === _bridgeLastCount) {
-            log(`BRIDGE INACTIVE - No new bridge messages in last 15s.`);
-        }
-        _bridgeLastCount = total;
-    }, 15000);
+        // Bridge inactivity detection
+        setInterval(() => {
+            const total = Object.values(_bridgeMsgTypes).reduce((a, b) => a + b, 0);
+            if (total === _bridgeLastCount) {
+                log(`BRIDGE INACTIVE - No new bridge messages in last 15s.`);
+            }
+            _bridgeLastCount = total;
+        }, 15000);
+    }
 
     // Icon visibility fix
     setInterval(() => {
