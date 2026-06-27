@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Megaplay.buzz Immersive Translate Fix v11.6+
 // @namespace    http://tampermonkey.net/
-// @version      11.6.3
-// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + shadow-aware translation sync guard + stale-loading recovery + iframe relay. Visual Console. No Google fallback.
+// @version      11.6.4
+// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + shadow-aware translation sync guard + stale-loading & untranslated-cue recovery + iframe relay. Visual Console. No Google fallback.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
 // @match        *://anisuge.se/*
@@ -44,6 +44,8 @@
     const TRANSLATION_SYNC_MAX_PAUSE_MS = 12000;
     const TRANSLATION_SYNC_STALE_LOADING_MS = 2500;
     const TRANSLATION_SYNC_REINJECT_COOLDOWN_MS = 12000;
+    const TRANSLATION_SYNC_UNTRANSLATED_MS = 3500;
+    const TRANSLATION_SYNC_PERSIST_REINJECT_COOLDOWN_MS = 10000;
 
     let visualConsoleContainer = null;
     let visualConsoleBody = null;
@@ -602,6 +604,7 @@
     let translationSyncPausedVideo = null;
     let translationSyncLoadingKey = '';
     let translationSyncLastRecoveryAt = 0;
+    let translationSyncUntranslatedSince = 0;
     let _bridgeLastSummary = '';
     let _bridgeMsgTypes = {};
     let _bridgeBlockedCount = 0;
@@ -676,6 +679,7 @@
         translationSyncPausedVideo = null;
         translationSyncLoadingKey = '';
         translationSyncLastRecoveryAt = 0;
+        translationSyncUntranslatedSince = 0;
         if (translationSyncResumeTimer) {
             clearTimeout(translationSyncResumeTimer);
             translationSyncResumeTimer = null;
@@ -2029,6 +2033,53 @@
         };
     };
 
+    const findITTranslatedTrack = (video) => {
+        if (!video || !video.textTracks) return null;
+        for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+            const createBy = track.createBy || track.getAttribute?.('data-create-by');
+            if (createBy && /^(?:imt|immersive[-_]translate|it[-_]subtitle)/i.test(String(createBy))) {
+                return track;
+            }
+        }
+        for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+            const cues = track.cues;
+            if (!cues) continue;
+            for (let j = 0; j < cues.length; j++) {
+                const t = (cues[j].text || '');
+                if (t.includes('\n') || t.includes('​') || /\p{L}/u.test(t)) {
+                    if (t.length > 8 && /\p{Script=Latin}/u.test(t)) return track;
+                }
+            }
+        }
+        return null;
+    };
+
+    const isActiveCueUntranslated = (video) => {
+        const itTrack = findITTranslatedTrack(video);
+        if (!itTrack || !itTrack.cues) return false;
+        const now = video.currentTime;
+        const originalCue = getCueAtTime(now);
+        const originalText = originalCue?.text?.trim() || '';
+        for (let i = 0; i < itTrack.cues.length; i++) {
+            const cue = itTrack.cues[i];
+            if (now < cue.startTime || now > cue.endTime) continue;
+            const cueText = (cue.text || '').trim();
+            if (!cueText) continue;
+            const parts = cueText.split(/\r?\n/);
+            const afterNewline = parts.length > 1 ? parts.slice(1).join(' ').trim() : '';
+            const isErrored = afterNewline === 'translateFail' || afterNewline === 'Translation failed' || /^translateFail[:.]/i.test(afterNewline);
+            const hasTranslated = /\p{L}/u.test(afterNewline || cueText) && !/^[A-Za-z0-9\s.,!?'"`-]+$/.test(afterNewline || cueText);
+            const missingTranslation = !hasTranslated || isErrored;
+            if (missingTranslation && originalText) {
+                const containsOriginal = cueText.includes(originalText);
+                if (containsOriginal || cueText === originalText) return true;
+            }
+        }
+        return false;
+    };
+
     const startTranslationSyncGuard = () => {
         if (!ENABLE_TRANSLATION_SYNC_GUARD) return;
         if (translationSyncInterval) clearInterval(translationSyncInterval);
@@ -2096,6 +2147,21 @@
 
             translationSyncLoadingSince = 0;
             translationSyncLoadingKey = '';
+            if (!translationSyncPausedVideo && isActiveCueUntranslated(video)) {
+                if (!translationSyncUntranslatedSince) {
+                    translationSyncUntranslatedSince = now;
+                }
+                if (now - translationSyncUntranslatedSince >= TRANSLATION_SYNC_UNTRANSLATED_MS
+                    && now - translationSyncLastRecoveryAt >= TRANSLATION_SYNC_PERSIST_REINJECT_COOLDOWN_MS) {
+                    if (injectVttTrack(video, vttText, { replace: true, reason: 'untranslated active cue recovery' })) {
+                        translationSyncLastRecoveryAt = now;
+                        translationSyncUntranslatedSince = 0;
+                        log('Translation sync guard reinjected track for stuck untranslated active cue.');
+                    }
+                }
+            } else if (translationSyncUntranslatedSince) {
+                translationSyncUntranslatedSince = 0;
+            }
             if (!translationSyncPausedVideo) return;
 
             const pausedVideo = translationSyncPausedVideo;
