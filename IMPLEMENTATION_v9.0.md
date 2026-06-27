@@ -1,127 +1,88 @@
-# Implementation Summary: Immersive Translate Fix v9.0
+# Implementation History: Immersive Translate Anime-Site Fix
 
-## Overview
-Successfully implemented **Plan v2 Steps 1-2** and **Step 5 cleanup** from the comprehensive roadmap. The implementation moves away from DOM-level patching toward a cleaner fetch-level override approach.
+This document is the historical log of how the fix was built. See `FIX_DOCUMENTATION.md` for the full technical deep-dive and `NEXT_STEPS.md` for current operating instructions.
 
-## Changes Made
+## v1 — Custom Google Translate overlay
 
-### 1. user_rules.json (Step 1)
-**From**: Custom rule with wrong ID and type
-```json
-{
-  "id": "anisuge_megaplay_custom",
-  "matches.add": ["*://anisuge.tv/*", ...],
-  "subtitleRule": { "type": "text_track", ... }
-}
-```
+**Date:** pre-2026
 
-**To**: Minimal extension to built-in rule
-```json
-[
-  {
-    "id": "common-vtt-jw",
-    "matches.add": [
-      "anisuge.tv",
-      "*://anisuge.tv/*",
-      "*://*.anisuge.tv/*"
-    ]
-  }
-]
-```
+Approach: skip IT entirely, fetch English VTT, call Google Translate API directly from userscript, render bilingual overlay on top of JWPlayer.
 
-**Why**: 
-- Built-in `common-vtt-jw` already has correct configuration with `subtitleRule.type: "subsrt"`
-- Uses `.add` suffix to merge domains (CRITICAL — plain `matches` breaks IT icon)
-- Bare-domain format matches existing built-in pattern
+**Verdict:** User rejected this. Goal was always to use IT's own translation engine.
 
-### 2. megaplay_patch.user.js (Step 2 + Step 5)
+## v3.6 — Cross-origin VTT injection via data:URI
 
-#### Added (Step 2): Early window.fetch Override
-- **Location**: Lines 59-122 (right after anti-debug section)
-- **Purpose**: Intercept VTT requests and inject Referer header via GM_xmlhttpRequest
-- **Key Timing**: Runs at `@run-at document-start` BEFORE extension loads
-  - When extension's inject script saves `globalThis.__originalFetch`, it captures our override
-  - Extension's page-context fetch hook inherits our GM-backed fetch
-  - Enables bypass of 403 Forbidden from 1oe.lostproject.club
+**Date:** 2026
 
-**Code Pattern**:
-```js
-unsafeWindow.fetch = function (input, init) {
-    const url = ...extract URL...;
-    if (/lostproject\.club\/.+\.vtt/i.test(url)) {
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                method: 'GET', url,
-                headers: { 'Referer': 'https://megaplay.buzz/' },
-                onload: r => resolve(new Response(r.responseText, {...})),
-                onerror: e => reject(new TypeError(...))
-            });
-        });
-    }
-    return _origFetch(input, init);
-};
-```
+Approach: intercept fetch for `.vtt` URLs, fetch with `Referer` header, convert to `data: URI`, swap URL via postMessage bridge so IT gets the VTT content.
 
-#### Removed (Step 5): Non-Functional Patches
-1. **HTMLTrackElement.src DOM-level swap** (lines 377-451 in v8.1)
-   - Reason: JWPlayer uses HLS subtitle path (cues via addCue), not `<track>` element
-   - Extension doesn't read track.src to discover URL
-   - Proven no-op — no log output ever triggered
+**Verdict:** Worked, but unreliable: cross-origin postMessage bridge hit Firefox's XrayWrapper issues intermittently.
 
-2. **MutationObserver for track scanning** (lines 453-500 in v8.1)
-   - Dependent on HTMLTrackElement.src patch
-   - Unnecessary with new fetch override approach
+## v5 / v8 — Preact XrayWrapper patches + DOM hook
 
-3. **injectSubtitleTracks function** (lines 553-622 in v8.1)
-   - Injected manual `<track>` elements that JWPlayer ignored
-   - Not called by new v9.0 flow
-   - Unnecessary DOM manipulation
+**Date:** 2026
 
-4. **Polling engine** (lines 1120-1197 in v8.1)
-   - 3-second continuous loop trying to inject tracks
-   - Called `injectSubtitleTracks()` and other old functions
-   - Replaced with more efficient IT translation monitor
+Approach: pre-define 17 Preact internal properties on `Node.prototype` to prevent the content-script Preact from crashing when rendering cross-origin DOM elements. Pair with `TextTrackCue.prototype.innerHTML` setter to capture IT's translated cue writes.
 
-#### Kept: Essential Components
-- **Anti-debug** (section 0) — Prevents remote debugging
-- **Preact XrayWrapper fix** (section 0.5) — Pre-defines Preact properties on Node.prototype
-- **TextTrackCue.innerHTML patch** (section 0.6) — Captures extension's cue.innerHTML writes and copies to cue.text
-- **GM_webRequest** (section 1) — Additional CORS header injection (defense-in-depth)
-- **Bridge postMessage interceptor** (section 6) — Diagnostics and message tracking
-- **IT Translation Monitor** (section 7) — Detects bilingual cues (EN\nVI) from extension
-- **Google Translate Fallback** (section 8) — Fallback if IT fails
-- **Bilingual Overlay Render** (section 9) — Displays EN + VI captions
+**Verdict:** Patches installed correctly but never observed firing because IT never reached the `cue.innerHTML = translatedText` codepath.
 
-## Version Changes
-- **v8.1** → **v9.0**
-- Lines: ~1250 → 943 (25% reduction)
-- Cleaner architecture, fewer side effects
+## v9.0 — Minimal extension to built-in `common-vtt-jw`
 
-## Testing Checklist
+**Commit:** `0511484`
 
-After reloading both the extension user rules and the userscript, verify:
+Approach: stop fighting IT's architecture. Use IT's existing `common-vtt-jw` rule (already configured for `subtitleRule.type: "subsrt"`) and just extend `matches.add` to include `anisuge.tv` and `megaplay.buzz`. Simplify userscript to fetch override only.
 
-- [ ] **Console**: `[initPage] rule https://megaplay.buzz/stream/... common-vtt-jw` (parent page)
-- [ ] **Console**: `[initPage] rule https://anisuge.tv/... common-vtt-jw` (parent page matches too)
-- [ ] **Console**: Bridge messages appear: `isContentReady`, `requestSubtitle`, etc.
-- [ ] **Console**: `[IT-Fix] fetch proxy: https://1oe.lostproject.club/...vtt`
-- [ ] **Console**: NO `Error: request subtitle error` (success!)
-- [ ] **Console**: `[IT-Fix] innerHTML → text: "..."` (extension writing translation)
-- [ ] **UI**: EN + VI subtitles appear in JWPlayer caption area
+**Changes:**
+- Removed HTMLTrackElement.src swap, MutationObserver polling, manual track injection, 3s polling engine.
+- Kept: anti-debug, Preact XrayWrapper fix (page context only, harmless), TextTrackCue.innerHTML patch, GM_webRequest, bridge postMessage interceptor, IT translation monitor, Google fallback, bilingual overlay.
 
-## Open Paths for Step 3 (if needed)
+**Verdict:** Setup now reaches IT's `Ms.translateSubtitle` codepath consistently. Still slow / unreliable.
 
-If extension still fails to translate after Step 2:
-- Verify if content-script's `_fetchSubtitle` uses `globalThis.__originalFetch` (depends on `Qe()` result on desktop)
-- If it doesn't use `__originalFetch`, implement bridge message interception (Step 3) to swap URL to data:URI
-- Use payload preview logs from bridge interceptor to identify exact message structure
+## v11.5 — Bridge responder for `requestSubtitle`
 
-## Known Risks for Step 4 (if needed)
+**Date:** 2026-06-18
 
-If Preact crash reoccurs when extension activates UI:
-- Use bridge message payload preview logs to identify crashing message type
-- Add to block-list in bridge interceptor (keep `requestSubtitle`, block UI messages)
-- Ensure cue.text still receives translation (via TextTrackCue.innerHTML patch)
+Approach: respond to IT's `requestSubtitle` postMessage from userscript with the full VTT body. IT translates the entire file as one document → no windowed batching → no per-batch timeout stalls.
 
-## Commit Hash
-`0511484` — feat: implement plan v2 Steps 1-2 for Immersive Translate fix
+**Verdict:** Translation was smooth, no stall. But Firefox's `stopImmediatePropagation()` couldn't cross the userscript/content-script compartment boundary in some configurations, causing intermittent "lúc được lúc không" detection.
+
+## v11.6 — Direct `<track>` injection
+
+**Date:** 2026-06-20 (commit `60479fc`, `b180529`, `938a440`, `2804270`)
+
+Approach: stop trying to fight the bridge. Fetch the English VTT once, inject it as a `<track kind="subtitles" default src="data:text/vtt;base64,…">` on the video. IT's content_main reads cue text directly from the DOM (no fetch, no bridge) → reliably translates, but now does so via the `attachSubtitle` windowed path (cuechange-driven, one lookahead window at a time, each wrapped in IT's per-request timeout).
+
+**Trade-off:** Detection became deterministic; per-request stall was introduced. Mitigated by tuning the gemma service's `requestTimeout` to ~20s in `Full_User_config.json`.
+
+**Verdict:** Stable. The current architectural baseline. v11.6 is the only working approach on Firefox in this setup.
+
+## v11.6.4 — Translation sync guard + recovery (this repo's current build)
+
+**Date:** 2026-06-27
+
+Approach: v11.6 is stable, but windowed batched translation means a single batch timeout can lose a window of cues. Once a cue is marked `state="error"` in IT's React state, IT never retranslates it (`v[b].translation && !C` is permanently true). Add three layers of defense:
+
+1. **Shadow-aware sync guard** — poll IT's `#imt-caption-window` (including `shadowRoot`) every 80ms. Pause video when `.source-cue` present but `.target-cue` empty.
+2. **Stale-loading recovery** — after 2.5s of `state="loading"`, reinject the `<track>` with a fresh data:URI (timestamp nonce forces IT to re-process).
+3. **Untranslated-cue recovery** — every 80ms, scan IT's managed TextTrack. If active cue is untranslated (no target-language characters, or contains literal `translateFail`), reinject after 3.5s of being stuck. Cooldown 10s.
+
+Files updated:
+- `megaplay_patch.user_firefox.js` → `11.6.4`
+- `megaplay_patch.user_firefox_experiment.js` → `11.6-exp13-untranslated-recovery`
+- `megaplay_patch.no_antidebug.user.js` → `11.6.4`
+- `Full_User_config.json` → `requestTimeout: 20000`, `retry: 0`, `maxTextGroupLengthPerRequestForSubtitle: 1` on Gemma + Google + Bing
+- `user_rules.json` → expanded domain coverage
+
+**Verdict:** Confirmed working. 3-consecutive-line misses reduced to occasional single-cue misses that recover automatically within ~3.5s.
+
+## v11.6.5 — Domain expansion
+
+**Date:** 2026-06-27
+
+Approach: extend `@match` and `user_rules.json` to cover all sister sites (animesalt, animekai, anikoto family, hianime family, zorotv, 9anime, etc.).
+
+Files updated:
+- All three userscripts bumped to `11.6.5` (or `11.6-exp14-site-coverage` for experiment)
+- `user_rules.json` → 76 `matches.add` entries (38 domains × 2 each: exact + wildcard)
+
+**Verdict:** Build covers the full ecosystem of similar JWPlayer-embed anime sites.

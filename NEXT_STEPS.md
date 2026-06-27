@@ -1,112 +1,95 @@
-# Next Steps: Testing v9.0 Implementation
+# Next Steps: Operating v11.6.5 Build
 
 ## Prerequisites
-1. Firefox with Immersive Translate extension installed
-2. Tampermonkey with megaplay_patch.user.js v9.0
-3. Access to anisuge.tv or megaplay.buzz with English subtitles
+- Firefox 132+
+- Immersive Translate extension (extension ID `8c297b69-...` in user's logs) installed as an extension, not userscript
+- Tampermonkey (or Violentmonkey) with **one** of:
+  - `megaplay_patch.user_firefox.js` `11.6.5` (recommended)
+  - `megaplay_patch.no_antidebug.user.js` `11.6.5` (if anti-debug hook conflicts with another extension)
+- Access to one of the supported anime sites (see `README.md` for full domain list)
 
-## Step 0: Update Configuration
-1. **Reload Immersive Translate user rules**:
-   - Open IT extension settings → User Rules
-   - Upload/paste updated `user_rules.json` (now 9 lines, very simple)
-   - Save and enable
+## Step 0: Apply Configuration
 
-2. **Reload userscript**:
-   - Go to Tampermonkey dashboard
-   - Find "Megaplay.buzz Immersive Translate Fix v9.0"
-   - Click refresh or reload page with script active
+1. **Import user rules**:
+   - IT extension → Settings → Developer → "Edit user rules (JSON)"
+   - Paste the entire contents of `user_rules.json`
+   - Save
 
-## Step 1: Navigate to Video
-Open: https://anisuge.tv/watch/anime-slug/ep-1
+2. **Import translation service config**:
+   - IT extension → Settings → Developer → "Import / Export config"
+   - Import `Full_User_config.json`
+   - This applies `requestTimeout: 20000`, `retry: 0`, `maxTextGroupLengthPerRequestForSubtitle: 1` to:
+     - `google`
+     - `bing`
+     - `gemini-67auesAZ` (Gemma 4 31B)
 
-## Step 2: Open DevTools Console
-- **Firefox**: Press `F12` → Console tab
-- Keep it open during video playback
+3. **Reload Tampermonkey script**:
+   - Open Tampermonkey dashboard
+   - Confirm script version is `11.6.5` (or `11.6-exp14-site-coverage` for the experiment variant)
+   - Hard-reload the page
 
-## Step 3: Watch for Critical Logs
+## Step 1: Open an Episode
 
-### Expected Sequence (SUCCESS):
+Navigate to any anime episode on a supported site, e.g. `https://anisuge.se/watch/<slug>/ep-1`. Click play. The video loads in an iframe (`megaplay.buzz`, `vidtube.site`, etc.) with JWPlayer + HLS.
+
+## Step 2: Confirm Translation Is Running
+
+In DevTools console (focus on the **iframe** frame for technical detail; top frame for the `[TOP]` userscript logs):
+
+### Healthy sequence
+
 ```
-[IT-Fix] Anti-debug active.
-[IT-Fix] Early window.fetch override installed for VTT Referer injection.
-[IT-Fix] Preact XrayWrapper fix: 17 properties pre-defined...
-[IT-Fix] TextTrackCue.prototype.innerHTML monkey-patch installed.
-[IT-Fix] GM_webRequest registered.
-[IT-Fix] VTT Discovery...
-[IT-Fix] Starting TextTrack monitor for IT translations...
-[initPage] rule https://megaplay.buzz/stream/... common-vtt-jw ✓
-[IT-Fix] Bridge message type seen: isContentReady
-[IT-Fix] fetch proxy: https://1oe.lostproject.club/anime/.../subtitles/en.vtt ✓
-[IT-Fix] Bridge message type seen: requestSubtitle
-[IT-Fix] innerHTML → text: "Line 1 from IT translation..." ✓
-[IT-Fix] Bridge messages seen: isContentReady:1, requestSubtitle:1, ... ✓
-```
-
-### Red Flags (FAILURE):
-```
-[IT-Fix] BRIDGE INACTIVE - Zero messages intercepted after script start.
-  → Extension not activating, rule didn't match
-  
-Error: request subtitle error
-  → fetch() failed, Referer still missing
-
-[initPage] rule https://anisuge.tv/... undefined
-  → Rule didn't match (check user_rules.json reload)
+[IFRAME:...] Injected with VTT data:URI (26KB, reason=initial fetch).
+[IFRAME:...] Translation sync guard reinjected track for stuck untranslated active cue.
 ```
 
-## Step 4: Check Video UI
-1. **IT Extension Icon**: Should be visible in top-right corner
-2. **Subtitles**: Should show EN + VI (bilingual format)
-3. **Duration**: First translation may take 5-10 seconds
+The first message confirms the English VTT was proxied and re-injected as a `<track>` element IT can read. The second message means the sync guard detected a stuck cue and reinjected.
 
-## Step 5: Common Issues
+### Red flags
 
-### Issue 1: Icon disappeared / No bridge messages
-- **Cause**: user_rules.json not reloaded or has wrong format
-- **Fix**: 
-  - Verify `matches.add` (not plain `matches`)
-  - Verify `id: "common-vtt-jw"` (not custom ID)
-  - Hard refresh browser (Ctrl+Shift+R)
+| Symptom | Likely cause |
+|---|---|
+| `[IFRAME:...] No IT extension globals found on window.` | Expected. The extension's UI lives in content-script context, not the page. |
+| `Immersive Translate WARN: [merge_rule] 跳过非纯数据对象…` | Harmless IT config warning. |
+| `Immersive Translate ERROR: request failed fetchError: Request timeout after 20000ms` | The translation API is slow. With 20s timeout and 0 retry, the cue is marked errored; the untranslated-cue recovery reinjects ~3.5s later. |
+| `BRIDGE INACTIVE - No new bridge messages in last 15s.` | Means an old script is still running. Confirm version is `11.6.5`. |
 
-### Issue 2: "Error: request subtitle error" in console
-- **Cause**: fetch() call in content-script still failing (Step 3 needed)
-- **Expected behavior for v9.0**: Should NOT see this error if page-level fetch hooks work
-- **If still seeing it**: Implement Step 3 (bridge message interception with data:URI swap)
+## Step 3: If a Cue Is Still Stuck After Reload
 
-### Issue 3: Preact XrayWrapper crash
-```
-Error: Not allowed to define cross-origin object as property on [Object] or [Array]
-```
-- **Expected**: May see this if extension renders UI components from content-script
-- **Mitigation**: Our Node.prototype patch should prevent it (Step 4 handles if it reoccurs)
-- **If still crashes**: Identify message type in payload preview logs, add to block-list
+Manual recovery:
+1. Press `F5` to reload the page.
+2. Subtitle cues re-process from scratch (fresh React state in IT).
 
-### Issue 4: No translation appears
-- **Possible causes**:
-  - VTT URL not detected (check `[IT-Fix] VTT Discovery` logs)
-  - Translation taking too long (wait 10+ seconds)
-  - Extension's engine failure (check IT extension's own console)
-- **Fallback**: Should see Google Translate (fallback enabled)
+Automatic recovery (already in v11.6.5):
+- Untranslated-cue recovery detects stuck cues and reinjects every 10s when cooldown allows.
+- If you want to force recovery immediately: pause the video, seek back ~10s, resume. IT will re-evaluate cues in that range.
 
-## Step 6: If All Looks Good
-✓ Logs show successful flow  
-✓ Subtitles display EN + VI  
-✓ No errors in console  
+## Step 4: Switch Translation Service
 
-**You've successfully implemented Plan v2 Step 1-2!**
+To use a faster model:
+- IT Settings → Translation Service → pick a faster option (e.g. `gemini-flash-lite-latest`).
+- If switching **subtitle** service separately, set `subtitleTranslateService` to that service's id.
 
-Next phases (if needed):
-- **Step 3**: Bridge message interception (if content-script fetch still fails)
-- **Step 4**: XrayWrapper crash handler (if crash reoccurs on UI render)
+To disable the untranslated-cue recovery (e.g. for debugging):
+- Edit `megaplay_patch.user_firefox.js`, set `const ENABLE_TRANSLATION_SYNC_GUARD = false`.
+
+## Step 5: Performance Tips
+
+- Use `gemini-flash-lite-latest` or similar fast model for subtitles.
+- Keep `maxTextGroupLengthPerRequestForSubtitle: 1` (already set in `Full_User_config.json`).
+- Keep `requestTimeout: 20000` (already set).
+- If you have a Pro IT account, consider using built-in premium services for lowest latency.
+
+## Step 6: Known Limitations
+
+- The untranslated-cue detector works best when target language contains non-ASCII characters (Vietnamese, Chinese, Japanese, Thai, etc.). For pure-Latin targets the fallback only catches `translateFail` literal.
+- During recovery, the video pauses for 80ms to let IT catch up. This is intentional to avoid skipping cues.
+- 3-consecutive-line misses were the original symptom. After v11.6.5, single-cue misses are recovered within ~3.5s.
 
 ## Step 7: If Issues Persist
-1. Check Plan v2 document for detailed diagnostics
-2. Enable more verbose logging (modify log function to include stack traces)
-3. Compare against v8.0 logs (in original conversation) to see differences
-4. Run Step 3 (bridge interception) as preemptive measure
 
----
-
-**Commit**: 0511484 - feat: implement plan v2 Steps 1-2  
-**Files Modified**: user_rules.json, megaplay_patch.user.js (v9.0)  
-**Plan Reference**: C:\Users\Admin\.claude\plans\ti-p-t-c-functional-milner.md
+1. Verify script version in Tampermonkey dashboard.
+2. Verify `user_rules.json` was reloaded in IT.
+3. Verify `Full_User_config.json` was imported (check IT Settings → Translation Services → gemma-4-31b-it → timeout should be 20000).
+4. Run `node --check megaplay_patch.user_firefox.js` to confirm script syntax is valid (sanity check after manual edits).
+5. Compare against the most recent log in `FIX_DOCUMENTATION.md` §15.5 to see expected behavior.

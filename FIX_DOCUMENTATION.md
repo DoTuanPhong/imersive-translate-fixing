@@ -575,3 +575,90 @@ After deploying v11.6:
 | `megaplay_patch.user_firefox.js` | version bump, header, ~3 patches |
 | `megaplay_patch.no_antidebug.user.js` | version bump, header, ~3 patches |
 | `FIX_DOCUMENTATION.md` | This section |
+
+---
+
+## 15. v11.6.4 — Translation Sync Guard + Untranslated-Cue Recovery
+
+**Date:** 2026-06-27
+
+### 15.1 Symptom (post-v11.6)
+
+After v11.6 made subtitle translation stable (no more "lúc được lúc không"), users reported a new residual problem: every few minutes, **exactly 3 consecutive subtitle lines were skipped**, even though the next batch translated fine. Reloading the page immediately fixed it, and pausing the video did NOT help — IT had permanently marked those cues as failed.
+
+### 15.2 Root Cause Analysis
+
+From `immersive-translate-repo/dist/firefox/content_main.js`:
+
+`h(b)` scheduler in the `attachSubtitle` React component only translates cues matching:
+
+```js
+if (v[b].translation && !C || v[b].state === "loading") {
+    // skip — already translated or loading
+} else {
+    // translate this batch
+}
+```
+
+When translation fails, IT sets `state="error"`, `translation="translateFail"`, `needReTranslate=false` on the cue in React state. From that moment:
+
+- `v[b].translation && !C` → `true && true` → permanently true
+- Scheduler skips the cue forever
+- Re-injecting the track doesn't help because `Nq(i.current, newSubtitleItems)` merges by `Rq(r) === r.text`, and state is preserved from existing entry: `state: i.state`.
+- Pausing the video doesn't help because the scheduler doesn't retry on its own.
+
+### 15.3 Fix Applied (v11.6 → v11.6.4)
+
+Three layers of defense added to all three userscripts:
+
+1. **Shadow-aware translation sync guard** — polls the IT overlay's `#imt-caption-window` (also traversing `shadowRoot`) every 80ms. When `.source-cue` is present but `.target-cue` is empty, the guard pauses the video (after 80ms) so IT can finish, then resumes when translation appears. Max wait 12s prevents infinite pause.
+
+2. **Stale-loading recovery** — if a `loading` state persists for > 2.5s, the script reinjects the `<track>` with a fresh data:URI (timestamped nonce in VTT body so `Nq()` treats it as new cues).
+
+3. **Untranslated-cue recovery (new in v11.6.4)** — every 80ms, the guard inspects IT's managed TextTrack (located by `createBy` attribute or by bilingual cue pattern). If the active cue's text contains only ASCII (no Vietnamese target) or the literal string `translateFail`, recovery is queued. After 3.5s of being stuck, the script reinjects the track (10s cooldown).
+
+The recovery reuses the existing `injectVttTrack(video, vttText, { replace: true, reason })` helper. The `replace: true` flag removes the old injected track first; the fresh data:URI carries a `NOTE it-fix …` line with a unique timestamp so IT's `Nq()` no longer matches by text and re-processes the cue cleanly.
+
+### 15.4 Detection Heuristics
+
+```js
+findITTranslatedTrack(video):
+    1. Look for textTrack with createBy attribute matching /^imt|immersive-translate|it-subtitle/i.
+    2. Fallback: any track with a cue text containing both Latin characters and a newline.
+
+isActiveCueUntranslated(video):
+    For each cue in the IT track whose [start, end] contains currentTime:
+        parts = cueText.split('\n')
+        afterNewline = parts.length > 1 ? parts.slice(1).join(' ').trim() : ''
+        isErrored = afterNewline in ['translateFail', 'Translation failed'] || /^translateFail[:.]/i.test(afterNewline)
+        hasTranslated = /\\p{L}/u.test(afterNewline || cueText) && !/^[A-Za-z0-9\\s.,!?'"`-]+$/.test(...)
+        if (!hasTranslated || isErrored) and cueText contains originalEnglishText → return true
+```
+
+The `\\p{L}` Unicode regex works for any target language (Vietnamese, Indonesian, Spanish, etc.). For pure-ASCII targets the detector falls back to a weaker check; in that case the sync guard still pauses/resumes correctly via the `loading` state path.
+
+### 15.5 Diagnostic Logs
+
+| Log | Meaning |
+|---|---|
+| `Translation sync guard paused video while IT catches up.` | Cue is loading; video paused for IT to finish. |
+| `Translation sync guard resumed video.` | Translation arrived; video resumed. |
+| `Translation sync guard hit max wait and resumed video.` | 12s max pause hit; resuming anyway. |
+| `Translation sync guard reinjected track after stale loading on cue: <first 80 chars>` | Loading persisted 2.5s; reinjected track. |
+| `Translation sync guard reinjected track for stuck untranslated active cue.` | Errored cue detected; reinjected track. |
+
+### 15.6 Files Changed
+
+| File | Version |
+|---|---|
+| `megaplay_patch.user_firefox.js` | `11.6.4` → `11.6.5` (expanded domain coverage) |
+| `megaplay_patch.user_firefox_experiment.js` | `11.6-exp13-untranslated-recovery` → `11.6-exp14-site-coverage` |
+| `megaplay_patch.no_antidebug.user.js` | `11.6.4` → `11.6.5` |
+| `user_rules.json` | 76 `matches.add` entries (38 domains x 2 each: exact + wildcard) |
+| `Full_User_config.json` | `requestTimeout:"20000"`, `retry:"0"`, `maxTextGroupLengthPerRequestForSubtitle:"1"` on Gemma + Google + Bing |
+| `FIX_DOCUMENTATION.md` | This section |
+
+### 15.7 Known Limitations
+
+- The untranslated-cue detector is most accurate when the target language contains non-ASCII characters (Vietnamese, Chinese, Japanese, Thai, etc.). For target languages sharing the Latin script (e.g. English→Spanish), the fallback heuristic checks for the literal string `translateFail` only — manual recovery via reload is required if a cue fails without surfacing that token.
+- Re-injection creates new cue entries in IT's React state; previous errored entries remain. They become inert once the playhead passes them. No visual overlap because they share time windows and IT's overlay shows the most recent translation per cue.
