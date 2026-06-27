@@ -1,14 +1,41 @@
 // ==UserScript==
 // @name         Megaplay.buzz Immersive Translate Fix v11.6+
 // @namespace    http://tampermonkey.net/
-// @version      11.6.4
-// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + shadow-aware translation sync guard + stale-loading & untranslated-cue recovery + iframe relay. Visual Console. No Google fallback.
+// @version      11.6.5
+// @description  Pure IT engine fix: fetch override + Referer injection + postMessage interception + shadow-aware translation sync guard + stale-loading & untranslated-cue recovery + iframe relay. Visual Console. No Google fallback. Expanded site coverage.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
 // @match        *://anisuge.se/*
 // @match        *://animesuge.re/*
 // @match        *://animesuge.cz/*
 // @match        *://animesugez.tv/*
+// @match        *://animesalt.cz/*
+// @match        *://animesalt.to/*
+// @match        *://animesogo.to/*
+// @match        *://animesugetv.bz/*
+// @match        *://animekai.se/*
+// @match        *://animekaitv.to/*
+// @match        *://animepahetv.to/*
+// @match        *://anikai.se/*
+// @match        *://anikaitv.to/*
+// @match        *://anikoto.bz/*
+// @match        *://anikoto.cz/*
+// @match        *://anikoto.me/*
+// @match        *://anikoto.net/*
+// @match        *://anikototv.se/*
+// @match        *://anikototv.to/*
+// @match        *://animewave.to/*
+// @match        *://animixplay.cz/*
+// @match        *://animixplay.tube/*
+// @match        *://aniwatch.ch/*
+// @match        *://aniwave.cz/*
+// @match        *://aniwave.id/*
+// @match        *://anixtv.me/*
+// @match        *://gogoanime.com.by/*
+// @match        *://hianimes.re/*
+// @match        *://hianimetv.si/*
+// @match        *://hianimez.org/*
+// @match        *://zorotv.cz/*
 // @match        *://megaplay.buzz/*
 // @match        *://vidwish.live/*
 // @match        *://1anime.site/*
@@ -18,6 +45,10 @@
 // @match        *://*.watching.onl*
 // @match        *://vidtube.site/*
 // @match        *://*.vidtube.site/*
+// @match        *://9anime.skin/*
+// @match        *://9animez.org/*
+// @match        *://*.9anime.skin/*
+// @match        *://*.9animez.org/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_webRequest
 // @grant        unsafeWindow

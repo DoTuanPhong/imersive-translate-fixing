@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Megaplay.buzz Immersive Translate Fix v11.6+ [EXPERIMENT document-mode]
 // @namespace    http://tampermonkey.net/
-// @version      11.6-exp13-untranslated-recovery
+// @version      11.6-exp14-site-coverage
 // @description  CONCLUSION build: behaves like v11.6, plus extra @match domains, a shadow-aware translation sync guard, and untranslated-cue recovery that reinjects the track when a stuck cue never got translated.
 // @author       Antigravity
 // @match        *://anisuge.tv/*
@@ -9,6 +9,33 @@
 // @match        *://animesuge.re/*
 // @match        *://animesuge.cz/*
 // @match        *://animesugez.tv/*
+// @match        *://animesalt.cz/*
+// @match        *://animesalt.to/*
+// @match        *://animesogo.to/*
+// @match        *://animesugetv.bz/*
+// @match        *://animekai.se/*
+// @match        *://animekaitv.to/*
+// @match        *://animepahetv.to/*
+// @match        *://anikai.se/*
+// @match        *://anikaitv.to/*
+// @match        *://anikoto.bz/*
+// @match        *://anikoto.cz/*
+// @match        *://anikoto.me/*
+// @match        *://anikoto.net/*
+// @match        *://anikototv.se/*
+// @match        *://anikototv.to/*
+// @match        *://animewave.to/*
+// @match        *://animixplay.cz/*
+// @match        *://animixplay.tube/*
+// @match        *://aniwatch.ch/*
+// @match        *://aniwave.cz/*
+// @match        *://aniwave.id/*
+// @match        *://anixtv.me/*
+// @match        *://gogoanime.com.by/*
+// @match        *://hianimes.re/*
+// @match        *://hianimetv.si/*
+// @match        *://hianimez.org/*
+// @match        *://zorotv.cz/*
 // @match        *://megaplay.buzz/*
 // @match        *://vidwish.live/*
 // @match        *://1anime.site/*
@@ -18,6 +45,10 @@
 // @match        *://*.watching.onl*
 // @match        *://vidtube.site/*
 // @match        *://*.vidtube.site/*
+// @match        *://9anime.skin/*
+// @match        *://9animez.org/*
+// @match        *://*.9anime.skin/*
+// @match        *://*.9animez.org/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_webRequest
 // @grant        unsafeWindow
